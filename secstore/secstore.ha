@@ -4,11 +4,13 @@ use crypto::keystore;
 use crypto::random;
 use crypto;
 use encoding::base64;
+use errors;
 use dirs;
 use fmt;
 use io;
 use os;
 use path;
+use strconv;
 use strings;
 
 def KEY_MEM: u32 = 100000;
@@ -50,7 +52,78 @@ export fn create(passphrase: []u8) (secstore | error) = {
 // Opens the secstore using the given passphrase and returns a state object. The
 // caller should call [[close]] when they're done with it.
 export fn open(passphrase: []u8) (secstore | error) = {
-	abort(); // TODO
+	const dir = strings::dup(dirs::data("himitsu"));
+	let buf = path::init();
+	path::set(&buf, dir, "key")!;
+
+	const input = os::open(path::string(&buf))?;
+	defer io::close(input);
+	let rbuf: [os::BUFSIZ]u8 = [0...];
+	const input = &bufio::buffered(input, rbuf, []);
+
+	const keydata = match (bufio::scanline(input)) {
+	case let buf: []u8 =>
+		yield strings::fromutf8(buf);
+	case io::EOF =>
+		return badstore;
+	};
+	defer free(keydata);
+	const items = strings::split(keydata, ":");
+	defer free(items);
+	if (len(items) != 5) {
+		return badstore;
+	};
+
+	if (items[0] != "argon2i") {
+		return badstore;
+	};
+	const mem = match (strconv::stou32(items[1])) {
+	case let u: u32 =>
+		yield u;
+	case =>
+		return badstore;
+	};
+	const passes = match (strconv::stou32(items[2])) {
+	case let u: u32 =>
+		yield u;
+	case =>
+		return badstore;
+	};
+
+	const salt = match (base64::decodestr(&base64::std_encoding, items[3])) {
+	case let buf: []u8 =>
+		yield buf;
+	case errors::invalid =>
+		return badstore;
+	};
+	defer free(salt);
+
+	const verify = match (base64::decodestr(&base64::std_encoding, items[4])) {
+	case let buf: []u8 =>
+		yield buf;
+	case errors::invalid =>
+		return badstore;
+	};
+	defer free(verify);
+
+	if (len(salt) != 16 || len(verify) != 16) {
+		return badstore;
+	};
+
+	let key: [32 + 16]u8 = [0...];
+	defer bytes::zero(key);
+
+	crypto::derivekey(key, salt, passphrase, mem, passes)!;
+
+	if (!crypto::compare(key[32..], verify)) {
+		return badpass;
+	};
+
+	const key = keystore::newkey(key[..32], "secstore")!;
+	return secstore {
+		key = key,
+		dir = dir,
+	};
 };
 
 // Returns true if this user has already initialized a secstore.
