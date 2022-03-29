@@ -37,14 +37,9 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	defer io::close(keyfile);
 
 	fmt::fprintf(keyfile, "argon2i:{}:{}:", KEY_MEM, KEY_PASSES)?;
-	const b64 = &base64::new_encoder(&base64::std_encoding, keyfile);
-	io::writeall(b64, salt)?;
-	io::close(b64);
-
+	base64::encode(keyfile, &base64::std_encoding, salt)?;
 	fmt::fprintf(keyfile, ":")?;
-	const b64 = &base64::new_encoder(&base64::std_encoding, keyfile);
-	io::writeall(b64, verify)?;
-	fmt::fprintln(keyfile)?;
+	base64::encode(keyfile, &base64::std_encoding, verify)?;
 
 	return secstore {
 		key = key,
