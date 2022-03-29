@@ -14,7 +14,8 @@ use strings;
 def KEY_MEM: u32 = 100000;
 def KEY_PASSES: u32 = 0;
 
-// Initializes a new secstore based on the provided passphrase.
+// Initializes a new secstore using the provided passphrase. The caller should
+// call [[close]] when they're done with it.
 export fn create(passphrase: []u8) (secstore | error) = {
 	let key: [32 + 16]u8 = [0...];
 	defer bytes::zero(key);
