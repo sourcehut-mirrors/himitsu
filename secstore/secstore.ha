@@ -43,6 +43,10 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	fmt::fprintf(keyfile, ":")?;
 	base64::encode(keyfile, &base64::std_encoding, verify)?;
 
+	path::set(&buf, dir, "index")!;
+	const index = os::create(path::string(&buf), 0o600)?;
+	io::close(index);
+
 	return secstore {
 		key = key,
 		dir = dir,
