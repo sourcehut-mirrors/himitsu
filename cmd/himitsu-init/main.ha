@@ -53,7 +53,8 @@ export fn main() void = {
 	case let err: secstore::error =>
 		fmt::fatal("Error initializing secstore: {}",
 			secstore::strerror(err));
-	case => yield;
+	case let store: secstore::secstore =>
+		secstore::close(&store);
 	};
 
 	fmt::println("Successfully initialized new secstore.")!;
