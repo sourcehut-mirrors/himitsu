@@ -126,19 +126,6 @@ export fn open(passphrase: []u8) (secstore | error) = {
 	};
 };
 
-// Returns true if this user has already initialized a secstore.
-export fn exists() bool = {
-	let buf = path::init();
-	path::set(&buf, dirs::data("himitsu"), "key")!;
-	const path = path::string(&buf);
-	match (os::access(path, os::amode::R_OK | os::amode::W_OK)) {
-	case let b: bool =>
-		return b;
-	case =>
-		return false;
-	};
-};
-
 // Closes the secstore, freeing any associated resources.
 export fn close(store: *secstore) void = {
 	keystore::destroy(store.key);
