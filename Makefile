@@ -12,4 +12,7 @@ himitsu-init:
 check:
 	hare test
 
-.PHONY: himitsud himitsu-init check
+clean:
+	rm -f himitsud himitsu-init
+
+.PHONY: himitsud himitsu-init check clean
