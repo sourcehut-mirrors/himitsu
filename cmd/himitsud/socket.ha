@@ -35,6 +35,7 @@ export fn bind(signalfd: io::file) server = {
 	case let err: net::error =>
 		fmt::fatal(net::strerror(err));
 	};
+	os::chmod(sockpath, 0o700)!;
 
 	let pollfd = alloc([poll::pollfd {
 		fd = net::listenerfd(sock) as io::file,
