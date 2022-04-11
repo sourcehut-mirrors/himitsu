@@ -17,11 +17,13 @@ export fn main() void = {
 
 	const termios = tty::termios_query(tty)!;
 	tty::noecho(&termios)!;
-	defer tty::termios_restore(&termios);
 
 	// TODO: There should be more convenient ways of starting himitsud
 	fmt::error("Please enter your passphrase to unlock the keyring: ")!;
-	const pass = match (bufio::scanline(tty)!) {
+	const pass = bufio::scanline(tty)!;
+	tty::termios_restore(&termios);
+
+	const pass = match (pass) {
 	case let buf: []u8 =>
 		yield buf;
 	case io::EOF =>
@@ -29,8 +31,6 @@ export fn main() void = {
 		fmt::fatal("Error: no passphrase supplied");
 	};
 	fmt::errorln()!;
-
-	tty::termios_restore(&termios);
 
 	const store = secstore::open(pass);
 	bytes::zero(pass);
