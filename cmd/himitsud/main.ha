@@ -19,6 +19,7 @@ export fn main() void = {
 	tty::noecho(&termios)!;
 
 	// TODO: There should be more convenient ways of starting himitsud
+	// TODO: Better manage secure memory with bufio::scanline/mlock/etc
 	fmt::error("Please enter your passphrase to unlock the keyring: ")!;
 	const pass = bufio::scanline(tty)!;
 	tty::termios_restore(&termios);
