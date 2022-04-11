@@ -11,8 +11,9 @@ use unix::poll::{event};
 
 type server = struct {
 	sock: *net::listener,
-	clients: []client,
+	stop: io::file,
 	pollfd: []poll::pollfd,
+	clients: []client,
 };
 
 type client = struct {
@@ -20,7 +21,7 @@ type client = struct {
 	buf: [os::BUFSIZ]u8,
 };
 
-export fn bind() server = {
+export fn bind(stopfd: io::file) server = {
 	const statedir = dirs::state("himitsu");
 	os::mkdirs(statedir)!;
 
@@ -38,10 +39,15 @@ export fn bind() server = {
 		fd = net::listenerfd(sock) as io::file,
 		events = event::POLLIN,
 		...
+	}, poll::pollfd {
+		fd = stopfd,
+		events = event::POLLIN,
+		...
 	}]);
 
 	return server {
 		sock = sock,
+		stop = stopfd,
 		pollfd = pollfd,
 		...
 	};
@@ -49,24 +55,38 @@ export fn bind() server = {
 
 export fn shutdown(serv: *server) void = {
 	net::shutdown(serv.sock);
+
+	let buf = path::init();
+	path::set(&buf, dirs::state("himitsu"), "socket")!;
+	os::remove(path::string(&buf))!;
+
 	free(serv.pollfd);
 	free(serv.clients); // TODO: Free/close client state
 };
 
-export fn dispatch(serv: *server) void = {
+export fn dispatch(serv: *server) bool = {
 	match (poll::poll(serv.pollfd, poll::INDEF)) {
 	case uint =>
 		if (serv.pollfd[0].revents & event::POLLIN != 0) {
 			accept(serv);
 		};
-		for (let i = 1z; i < len(serv.pollfd); i += 1) {
+		if (serv.pollfd[1].revents & event::POLLIN != 0) {
+			let buf: [1]u8 = [0...];
+			io::read(serv.stop, buf)!;
+			return false;
+		};
+		for (let i = 2z; i < len(serv.pollfd); i += 1) {
+			// TODO: Handle EAGAIN
 			if (serv.pollfd[i].revents & event::POLLIN != 0) {
 				abort(); // TODO
 			};
 		};
+	case errors::interrupted =>
+		yield;
 	case let err: errors::error =>
-		fmt::fatal(errors::strerror(err));
+		fmt::fatal("poll: {}", errors::strerror(err));
 	};
+	return true;
 };
 
 export fn accept(serv: *server) void = {

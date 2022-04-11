@@ -2,7 +2,11 @@ use bufio;
 use fmt;
 use io;
 use secstore;
+use unix;
+use unix::signal;
 use unix::tty;
+
+let stop: io::file = -1;
 
 export fn main() void = {
 	const tty = match (tty::open()) {
@@ -39,11 +43,17 @@ export fn main() void = {
 	};
 	defer secstore::close(&store);
 
-	const sock = bind();
+	let pipe = unix::pipe()!;
+	stop = pipe.1;
+	const sock = bind(pipe.0);
 	defer shutdown(&sock);
 
-	// TODO: Grab SIGINT/SIGTERM and clean up
-	for (true) {
-		dispatch(&sock);
-	};
+	signal::handle(signal::SIGINT, &sighandler);
+	signal::handle(signal::SIGTERM, &sighandler);
+
+	for (dispatch(&sock)) void;
+};
+
+fn sighandler(sig: int, info: *signal::siginfo, uctx: *void) void = {
+	io::write(stop, [1])!;
 };
