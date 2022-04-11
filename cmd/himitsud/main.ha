@@ -54,4 +54,5 @@ export fn main() void = {
 
 	fmt::println("himitsud running")!;
 	for (dispatch(&sock)) void;
+	fmt::println("himitsud terminated")!;
 };
