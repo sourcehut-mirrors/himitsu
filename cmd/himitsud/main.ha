@@ -45,9 +45,9 @@ export fn main() void = {
 	};
 	defer secstore::close(&store);
 
+	signal::block(signal::SIGINT, signal::SIGTERM);
 	const sigfd = signal::signalfd(signal::SIGINT, signal::SIGTERM)!;
 	defer io::close(sigfd);
-	signal::block(signal::SIGINT, signal::SIGTERM);
 
 	const sock = bind(sigfd);
 	defer shutdown(&sock);
