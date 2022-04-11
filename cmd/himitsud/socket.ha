@@ -8,10 +8,11 @@ use os;
 use path;
 use unix::poll;
 use unix::poll::{event};
+use unix::signal;
 
 type server = struct {
 	sock: *net::listener,
-	stop: io::file,
+	signalfd: io::file,
 	pollfd: []poll::pollfd,
 	clients: []client,
 };
@@ -21,7 +22,7 @@ type client = struct {
 	buf: [os::BUFSIZ]u8,
 };
 
-export fn bind(stopfd: io::file) server = {
+export fn bind(signalfd: io::file) server = {
 	const statedir = dirs::state("himitsu");
 	os::mkdirs(statedir)!;
 
@@ -40,14 +41,14 @@ export fn bind(stopfd: io::file) server = {
 		events = event::POLLIN,
 		...
 	}, poll::pollfd {
-		fd = stopfd,
+		fd = signalfd,
 		events = event::POLLIN,
 		...
 	}]);
 
 	return server {
 		sock = sock,
-		stop = stopfd,
+		signalfd = signalfd,
 		pollfd = pollfd,
 		...
 	};
@@ -71,8 +72,7 @@ export fn dispatch(serv: *server) bool = {
 			accept(serv);
 		};
 		if (serv.pollfd[1].revents & event::POLLIN != 0) {
-			let buf: [1]u8 = [0...];
-			io::read(serv.stop, buf)!;
+			signal::read(serv.signalfd)!;
 			return false;
 		};
 		for (let i = 2z; i < len(serv.pollfd); i += 1) {

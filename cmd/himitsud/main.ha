@@ -1,3 +1,4 @@
+use bytes;
 use bufio;
 use fmt;
 use io;
@@ -5,8 +6,6 @@ use secstore;
 use unix;
 use unix::signal;
 use unix::tty;
-
-let stop: io::file = -1;
 
 export fn main() void = {
 	const tty = match (tty::open()) {
@@ -29,12 +28,15 @@ export fn main() void = {
 		fmt::errorln()!;
 		fmt::fatal("Error: no passphrase supplied");
 	};
-	defer free(pass);
 	fmt::errorln()!;
 
 	tty::termios_restore(&termios);
 
-	const store = match (secstore::open(pass)) {
+	const store = secstore::open(pass);
+	bytes::zero(pass);
+	free(pass);
+
+	const store = match (store) {
 	case let err: secstore::error =>
 		fmt::fatal("Error opening secstore: {}",
 			secstore::strerror(err));
@@ -43,17 +45,13 @@ export fn main() void = {
 	};
 	defer secstore::close(&store);
 
-	let pipe = unix::pipe()!;
-	stop = pipe.1;
-	const sock = bind(pipe.0);
+	const sigfd = signal::signalfd(signal::SIGINT, signal::SIGTERM)!;
+	defer io::close(sigfd);
+	signal::block(signal::SIGINT, signal::SIGTERM);
+
+	const sock = bind(sigfd);
 	defer shutdown(&sock);
 
-	signal::handle(signal::SIGINT, &sighandler);
-	signal::handle(signal::SIGTERM, &sighandler);
-
+	fmt::println("himitsud running")!;
 	for (dispatch(&sock)) void;
-};
-
-fn sighandler(sig: int, info: *signal::siginfo, uctx: *void) void = {
-	io::write(stop, [1])!;
 };
