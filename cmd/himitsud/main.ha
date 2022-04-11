@@ -22,6 +22,7 @@ export fn main() void = {
 	case let buf: []u8 =>
 		yield buf;
 	case io::EOF =>
+		fmt::errorln()!;
 		fmt::fatal("Error: no passphrase supplied");
 	};
 	defer free(pass);
@@ -37,4 +38,12 @@ export fn main() void = {
 		yield store;
 	};
 	defer secstore::close(&store);
+
+	const sock = bind();
+	defer shutdown(&sock);
+
+	// TODO: Grab SIGINT/SIGTERM and clean up
+	for (true) {
+		dispatch(&sock);
+	};
 };
