@@ -2,10 +2,23 @@ use crypto::keystore;
 use errors;
 use fs;
 use io;
+use uuid;
 
 export type secstore = struct {
 	key: keystore::key,
 	dir: str,
+	// TODO: Consider adding hash table or btree or something. Might be fun
+	// to write the first b-tree in hare and see how it goes
+	entries: []entry,
+};
+
+export type entry = struct {
+	pairs: []pair,
+};
+
+export type pair = struct {
+	key: str,
+	value: (str | uuid::uuid),
 };
 
 export type badpass = !void;

@@ -51,6 +51,7 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	return secstore {
 		key = key,
 		dir = dir,
+		entries = [],
 	};
 };
 
@@ -128,6 +129,8 @@ export fn open(passphrase: []u8) (secstore | error) = {
 	return secstore {
 		key = key,
 		dir = dir,
+		// TODO: Load entries from index
+		entries = [],
 	};
 };
 
