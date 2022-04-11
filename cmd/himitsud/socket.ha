@@ -70,5 +70,20 @@ export fn dispatch(serv: *server) void = {
 };
 
 export fn accept(serv: *server) void = {
-	abort(); // TODO
+	const sock = match (net::accept(serv.sock)) {
+	case let sock: io::file =>
+		yield sock;
+	case let err: net::error =>
+		fmt::fatal(net::strerror(err));
+	};
+
+	append(serv.clients, client {
+		sock = sock,
+		...
+	});
+	append(serv.pollfd, poll::pollfd {
+		fd = sock,
+		events = event::POLLIN | event::POLLERR | event::POLLHUP,
+		...
+	});
 };
