@@ -241,19 +241,13 @@ fn reply(serv: *server, client: *client, reply: str) void = {
 	client.pollfd.events = event::POLLOUT | event::POLLHUP;
 };
 
-fn disconnect(serv: *server, client: *client) void = {
-	io::close(client.sock);
-	free(client.rbuf);
-	free(client.wbuf);
+fn disconnect(serv: *server, c: *client) void = {
+	io::close(c.sock);
+	free(c.rbuf);
+	free(c.wbuf);
 
-	// XXX: There is no need for this to be O(n) except laziness
-	let i = 0z;
-	for (i < len(serv.clients); i += 1) {
-		if (&serv.clients[i] == client) {
-			delete(serv.clients[i]);
-			break;
-		};
-	};
+	let i = (c: uintptr - serv.clients: *[*]client: uintptr): size / size(client);
+	delete(serv.clients[i]);
 	delete(serv.pollfd[i + 2]);
 
 	serv.disconnected = true;
