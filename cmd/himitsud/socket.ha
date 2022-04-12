@@ -17,6 +17,7 @@ use unix::signal;
 def CLIENT_MAXBUF: size = 16777216; // 16 MiB
 def MAX_CLIENTS: size = 256;
 def DEADLINE: time::duration = 5 * time::MINUTE;
+def POLLFD_RESERVED: size = 2;
 
 type server = struct {
 	sock: *net::listener,
@@ -100,12 +101,12 @@ fn dispatch(serv: *server) bool = {
 			signal::read(serv.signalfd)!;
 			return false;
 		};
-		for (let i = 2z; i < len(serv.pollfd); i += 1) {
-			dispatch_client(serv, &serv.clients[i - 2]);
+		for (let i = POLLFD_RESERVED; i < len(serv.pollfd); i += 1) {
+			dispatch_client(serv, &serv.clients[i - POLLFD_RESERVED]);
 			if (serv.disconnected) {
 				// Restart loop on client disconnect
 				serv.disconnected = false;
-				i = 2;
+				i = POLLFD_RESERVED;
 			};
 		};
 	case errors::interrupted =>
@@ -248,7 +249,7 @@ fn disconnect(serv: *server, c: *client) void = {
 
 	let i = (c: uintptr - serv.clients: *[*]client: uintptr): size / size(client);
 	delete(serv.clients[i]);
-	delete(serv.pollfd[i + 2]);
+	delete(serv.pollfd[i + POLLFD_RESERVED]);
 
 	serv.disconnected = true;
 };
