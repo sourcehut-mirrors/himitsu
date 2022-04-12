@@ -20,17 +20,21 @@ type server = struct {
 	signalfd: io::file,
 	pollfd: []poll::pollfd,
 	clients: []client,
+	disconnected: bool,
 };
 
-type client_mode = enum {
+type client_state = enum {
 	READ,
 	WRITE,
+	WRITE_ERROR,
 };
 
 type client = struct {
 	sock: io::file,
-	mode: client_mode,
-	buf: []u8,
+	state: client_state,
+	pollfd: *poll::pollfd,
+	rbuf: []u8,
+	wbuf: []u8,
 };
 
 fn bind(signalfd: io::file) server = {
@@ -69,7 +73,8 @@ fn bind(signalfd: io::file) server = {
 fn shutdown(serv: *server) void = {
 	for (let i = 0z; i < len(serv.clients); i += 1) {
 		io::close(serv.clients[i].sock);
-		free(serv.clients[i].buf);
+		free(serv.clients[i].rbuf);
+		free(serv.clients[i].wbuf);
 	};
 	free(serv.clients);
 	free(serv.pollfd);
@@ -92,14 +97,11 @@ fn dispatch(serv: *server) bool = {
 			return false;
 		};
 		for (let i = 2z; i < len(serv.pollfd); i += 1) {
-			if (serv.pollfd[i].revents & event::POLLERR != 0) {
-				abort(); // TODO
-			};
-			if (serv.pollfd[i].revents & event::POLLHUP != 0) {
-				abort(); // TODO
-			};
-			if (serv.pollfd[i].revents & event::POLLIN != 0) {
-				client_readable(serv, &serv.clients[i - 2]);
+			dispatch_client(serv, &serv.clients[i - 2]);
+			if (serv.disconnected) {
+				// Restart loop on client disconnect
+				serv.disconnected = false;
+				i = 2;
 			};
 		};
 	case errors::interrupted =>
@@ -119,15 +121,35 @@ fn accept(serv: *server) void = {
 		fmt::fatal(net::strerror(err));
 	};
 
-	append(serv.clients, client {
-		sock = sock,
-		...
-	});
 	append(serv.pollfd, poll::pollfd {
 		fd = sock,
-		events = event::POLLIN | event::POLLERR | event::POLLHUP,
+		events = event::POLLIN | event::POLLHUP,
 		...
 	});
+	let pollfd = &serv.pollfd[len(serv.pollfd) - 1];
+	append(serv.clients, client {
+		sock = sock,
+		pollfd = pollfd,
+		...
+	});
+};
+
+fn dispatch_client(serv: *server, client: *client) void = {
+	const pollfd = client.pollfd;
+	if (pollfd.revents & event::POLLERR != 0) {
+		disconnect(serv, client);
+		return;
+	};
+	if (pollfd.revents & event::POLLHUP != 0) {
+		disconnect(serv, client);
+		return;
+	};
+	if (pollfd.revents & event::POLLIN != 0) {
+		client_readable(serv, client);
+	};
+	if (pollfd.revents & event::POLLOUT != 0) {
+		client_writable(serv, client);
+	};
 };
 
 fn client_readable(serv: *server, client: *client) void = {
@@ -136,30 +158,90 @@ fn client_readable(serv: *server, client: *client) void = {
 	case let z: size =>
 		yield z;
 	case let err: io::error =>
-		abort(); // TODO: Disconnect client
+		disconnect(serv, client);
+		return;
 	};
-	append(client.buf, buf[..z]...);
-	if (len(client.buf) >= CLIENT_MAXBUF) {
-		abort(); // TODO: Disconnect client
+	append(client.rbuf, buf[..z]...);
+	if (len(client.rbuf) >= CLIENT_MAXBUF) {
+		disconnect_error(client, "error proto buffer exceeded\n");
+		return;
 	};
 
 	for (true) {
-		let i = match (bytes::index(client.buf, '\n')) {
+		let i = match (bytes::index(client.rbuf, '\n')) {
 		case let i: size =>
 			yield i;
 		case void =>
 			return;
 		};
 
-		const line = match (strings::try_fromutf8(client.buf[..i])) {
+		const line = match (strings::try_fromutf8(client.rbuf[..i])) {
 		case let s: str =>
 			yield s;
 		case utf8::invalid =>
-			abort(); // TODO: Disconnect client
+			disconnect_error(client, "error proto invalid UTF-8\n");
+			return;
 		};
+		defer delete(client.rbuf[..i+1]);
 
 		fmt::println(line)!;
-
-		delete(client.buf[..i+1]);
+		if (line == "error") {
+			disconnect_error(client, "test error\n");
+			return;
+		};
 	};
+};
+
+fn client_writable(serv: *server, client: *client) void = {
+	const z = match (io::write(client.sock, client.wbuf)) {
+	case let z: size =>
+		yield z;
+	case errors::again =>
+		return;
+	case let err: io::error =>
+		disconnect(serv, client);
+		return;
+	};
+	delete(client.wbuf[..z]);
+	if (len(client.wbuf) != 0) {
+		return;
+	};
+
+	switch (client.state) {
+	case client_state::WRITE =>
+		client.state = client_state::READ;
+	case client_state::WRITE_ERROR =>
+		disconnect(serv, client);
+	case => abort();
+	};
+};
+
+fn disconnect(serv: *server, client: *client) void = {
+	io::close(client.sock);
+	free(client.rbuf);
+	free(client.wbuf);
+
+	// XXX: There is no need for this to be O(n) except laziness
+	let i = 0z;
+	for (i < len(serv.clients); i += 1) {
+		if (&serv.clients[i] == client) {
+			delete(serv.clients[i]);
+			break;
+		};
+	};
+	delete(serv.pollfd[i + 2]);
+
+	serv.disconnected = true;
+};
+
+fn disconnect_error(
+	client: *client,
+	fmt: str,
+	args: fmt::field...
+) void = {
+	free(client.wbuf);
+	const msg = fmt::asprintf(fmt, args...);
+	client.wbuf = strings::toutf8(msg);
+	client.state = client_state::WRITE_ERROR;
+	client.pollfd.events = event::POLLOUT | event::POLLHUP;
 };
