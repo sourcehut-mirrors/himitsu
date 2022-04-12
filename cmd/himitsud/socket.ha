@@ -14,6 +14,7 @@ use unix::poll::{event};
 use unix::signal;
 
 def CLIENT_MAXBUF: size = 16777216; // 16 MiB
+def MAX_CLIENTS: size = 256;
 
 type server = struct {
 	sock: *net::listener,
@@ -119,6 +120,11 @@ fn accept(serv: *server) void = {
 		yield sock;
 	case let err: net::error =>
 		fmt::fatal(net::strerror(err));
+	};
+	if (len(serv.clients) >= MAX_CLIENTS) {
+		fmt::println("Max clients exceeded; dropping client")!;
+		io::close(sock);
+		return;
 	};
 
 	append(serv.pollfd, poll::pollfd {
