@@ -74,7 +74,12 @@ fn shutdown(serv: *server) void = {
 	os::remove(path::string(&buf))!;
 
 	free(serv.pollfd);
-	free(serv.clients); // TODO: Free/close client state
+
+	for (let i = 0z; i < len(serv.clients); i += 1) {
+		io::close(serv.clients[i].sock);
+		free(serv.clients[i].buf);
+	};
+	free(serv.clients);
 };
 
 fn dispatch(serv: *server) bool = {
