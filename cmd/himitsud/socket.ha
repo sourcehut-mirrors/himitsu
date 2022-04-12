@@ -67,19 +67,18 @@ fn bind(signalfd: io::file) server = {
 };
 
 fn shutdown(serv: *server) void = {
-	net::shutdown(serv.sock);
-
-	let buf = path::init();
-	path::set(&buf, dirs::state("himitsu"), "socket")!;
-	os::remove(path::string(&buf))!;
-
-	free(serv.pollfd);
-
 	for (let i = 0z; i < len(serv.clients); i += 1) {
 		io::close(serv.clients[i].sock);
 		free(serv.clients[i].buf);
 	};
 	free(serv.clients);
+	free(serv.pollfd);
+
+	let buf = path::init();
+	path::set(&buf, dirs::state("himitsu"), "socket")!;
+	os::remove(path::string(&buf))!;
+
+	net::shutdown(serv.sock);
 };
 
 fn dispatch(serv: *server) bool = {
