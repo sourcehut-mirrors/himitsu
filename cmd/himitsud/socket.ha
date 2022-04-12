@@ -201,11 +201,9 @@ fn client_readable(serv: *server, client: *client) void = {
 			return;
 		};
 		defer delete(client.rbuf[..i+1]);
-
-		fmt::println(line)!;
-		if (line == "error") {
-			disconnect_error(client, "test error\n");
-			return;
+		exec(serv, client, line);
+		if (serv.disconnected) {
+			break;
 		};
 	};
 };
@@ -228,10 +226,19 @@ fn client_writable(serv: *server, client: *client) void = {
 	switch (client.state) {
 	case client_state::WRITE =>
 		client.state = client_state::READ;
+		client.pollfd.events = event::POLLIN | event::POLLHUP;
 	case client_state::WRITE_ERROR =>
 		disconnect(serv, client);
 	case => abort();
 	};
+};
+
+fn reply(serv: *server, client: *client, reply: str) void = {
+	assert(client.state != client_state::WRITE
+		&& client.state != client_state::WRITE_ERROR);
+	client.wbuf = alloc(strings::toutf8(reply)...);
+	client.state = client_state::WRITE;
+	client.pollfd.events = event::POLLOUT | event::POLLHUP;
 };
 
 fn disconnect(serv: *server, client: *client) void = {
