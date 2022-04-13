@@ -32,7 +32,7 @@ export fn strerror(err: error) const str = {
 	case badstore =>
 		return "Found corrupt data in the key store";
 	case badpass =>
-		return "Incorrect keystore passphrase";
+		return "Incorrect passphrase";
 	case let err: fs::error =>
 		return fs::strerror(err);
 	case let err: io::error =>
