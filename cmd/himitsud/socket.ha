@@ -20,7 +20,7 @@ def DEADLINE: time::duration = 5 * time::MINUTE;
 def POLLFD_RESERVED: size = 2;
 
 type server = struct {
-	sock: *net::listener,
+	sock: io::file,
 	signalfd: io::file,
 	pollfd: []poll::pollfd,
 	clients: []client,
@@ -50,7 +50,7 @@ fn bind(signalfd: io::file) server = {
 	path::set(&buf, statedir, "socket")!;
 	const sockpath = path::string(&buf);
 	const sock = match (unix::listen(sockpath)) {
-	case let l: *net::listener =>
+	case let l: io::file =>
 		yield l;
 	case let err: net::error =>
 		fmt::fatal(net::strerror(err));
@@ -58,7 +58,7 @@ fn bind(signalfd: io::file) server = {
 	os::chmod(sockpath, 0o700)!;
 
 	let pollfd = alloc([poll::pollfd {
-		fd = net::listenerfd(sock) as io::file,
+		fd = sock,
 		events = event::POLLIN,
 		...
 	}, poll::pollfd {
