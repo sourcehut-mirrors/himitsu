@@ -19,7 +19,7 @@ export type pair = struct {
 export type invalid = !void;
 
 // Parses a query, returning its key/value pairs. The caller must pass the
-// return value to [[query_finish]] when they are done with it.
+// return value to [[finish]] when they are done with it.
 export fn parse(in: io::handle) (query | invalid | io::error) = {
 	const data = io::drain(in)?;
 	const data = match (strings::try_fromutf8(data)) {
@@ -35,7 +35,11 @@ export fn parse(in: io::handle) (query | invalid | io::error) = {
 	case shlex::syntaxerr =>
 		return invalid;
 	};
+	defer strings::freeall(items);
+	return parse_items(items);
+};
 
+export fn parse_items(items: []str) (query | invalid) = {
 	// XXX: Should do something about the case where the user specifies both
 	// ? and !
 	let query = query { ... };
@@ -51,8 +55,8 @@ export fn parse(in: io::handle) (query | invalid | io::error) = {
 		};
 		key = strings::trim(key, '?', '!');
 		append(query.items, pair {
-			key = key,
-			value = value,
+			key = strings::dup(key),
+			value = strings::dup(value),
 			private = private,
 			optional = optional,
 		});
@@ -60,9 +64,10 @@ export fn parse(in: io::handle) (query | invalid | io::error) = {
 	return query;
 };
 
-export fn query_finish(q: *query) void = {
+export fn finish(q: *query) void = {
 	for (let i = 0z; i < len(q.items); i += 1) {
 		free(q.items[i].key);
+		free(q.items[i].value);
 	};
 	free(q.items);
 };
@@ -86,7 +91,7 @@ export fn query_finish(q: *query) void = {
 			io::mode::READ);
 
 		const result = parse(&input)!;
-		defer query_finish(&result);
+		defer finish(&result);
 
 		assert(len(expected) == len(result.items));
 		for (let j = 0z; j < len(result.items); j += 1) {

@@ -3,15 +3,17 @@ use bytes;
 use crypto::keystore;
 use crypto::random;
 use crypto;
+use dirs;
 use encoding::base64;
 use errors;
-use dirs;
 use fmt;
 use io;
 use os;
 use path;
+use query;
 use strconv;
 use strings;
+use uuid;
 
 def KEY_MEM: u32 = 100000;
 def KEY_PASSES: u32 = 0;
@@ -138,4 +140,53 @@ export fn open(passphrase: []u8) (secstore | error) = {
 export fn close(store: *secstore) void = {
 	keystore::destroy(store.key);
 	free(store.dir);
+};
+
+// Adds an item to the keystore. The provided query must not have any missing
+// values.
+export fn add(store: *secstore, q: *query::query) void = {
+	let pairs: []pair = [];
+	for (let i = 0z; i < len(q.items); i += 1) {
+		const item = q.items[i];
+		assert(item.value != "", "Invalid query submitted to secstore::add");
+		const val = if (item.private) {
+			yield add_secret(store, item.value);
+		} else {
+			yield strings::dup(item.value);
+		};
+		append(pairs, pair {
+			key = strings::dup(item.key),
+			value = val,
+		});
+	};
+	// TODO: Write to index
+	append(store.entries, entry {
+		pairs = pairs,
+	});
+};
+
+fn add_secret(store: *secstore, val: str) uuid::uuid = {
+	let id = uuid::generate();
+	let idstr = uuid::encodestr(id);
+	defer free(idstr);
+
+	let buf = path::init();
+	path::set(&buf, store.dir, idstr)!;
+
+	const file = os::create(path::string(&buf), 0o600)!;
+	defer io::close(file);
+
+	let key: [32]u8 = [0...];
+	defer bytes::zero(key);
+	keystore::read(store.key, key);
+
+	let nonce: crypto::nonce = [0...];
+	random::buffer(nonce);
+	let ciphertext = strings::toutf8(strings::dup(val));
+	defer free(ciphertext);
+	const box = crypto::encrypt(&key, &nonce, ciphertext);
+	io::write(file, box.0)!;
+	io::write(file, box.1)!;
+	io::write(file, box.2)!;
+	return id;
 };

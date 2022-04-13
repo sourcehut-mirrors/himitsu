@@ -9,6 +9,7 @@ use net::unix;
 use net;
 use os;
 use path;
+use secstore;
 use strings;
 use time;
 use unix::poll;
@@ -26,6 +27,7 @@ type server = struct {
 	pollfd: []poll::pollfd,
 	clients: []client,
 	disconnected: bool,
+	store: *secstore::secstore,
 };
 
 type client_state = enum {
@@ -43,7 +45,7 @@ type client = struct {
 	wbuf: []u8,
 };
 
-fn bind(signalfd: io::file) server = {
+fn bind(store: *secstore::secstore, signalfd: io::file) server = {
 	const statedir = dirs::state("himitsu");
 	os::mkdirs(statedir)!;
 
@@ -72,6 +74,7 @@ fn bind(signalfd: io::file) server = {
 		sock = sock,
 		signalfd = signalfd,
 		pollfd = pollfd,
+		store = store,
 		...
 	};
 };

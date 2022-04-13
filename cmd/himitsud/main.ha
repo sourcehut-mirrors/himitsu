@@ -51,7 +51,7 @@ export fn main() void = {
 	const sigfd = signal::signalfd(signal::SIGINT, signal::SIGTERM)!;
 	defer io::close(sigfd);
 
-	const sock = bind(sigfd);
+	const sock = bind(&store, sigfd);
 	defer shutdown(&sock);
 
 	log::println("himitsud running");
