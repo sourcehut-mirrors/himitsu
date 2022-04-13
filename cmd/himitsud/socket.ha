@@ -186,7 +186,7 @@ fn client_readable(serv: *server, client: *client) void = {
 	};
 	append(client.rbuf, buf[..z]...);
 	if (len(client.rbuf) >= CLIENT_MAXBUF) {
-		disconnect_error(client, "error proto buffer exceeded\n");
+		disconnect_error(client, "error Buffer exceeded\n");
 		return;
 	};
 
@@ -202,7 +202,7 @@ fn client_readable(serv: *server, client: *client) void = {
 		case let s: str =>
 			yield s;
 		case utf8::invalid =>
-			disconnect_error(client, "error proto invalid UTF-8\n");
+			disconnect_error(client, "error Invalid UTF-8\n");
 			return;
 		};
 		defer delete(client.rbuf[..i+1]);

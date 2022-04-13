@@ -6,14 +6,14 @@ use strings;
 fn exec(serv: *server, client: *client, cmd: str) void = {
 	const items = match (shlex::split(cmd)) {
 	case shlex::syntaxerr =>
-		reply(serv, client, "error syntax\n");
+		reply(serv, client, "error Invalid command syntax\n");
 		return;
 	case let items: []str =>
 		yield items;
 	};
 	defer strings::freeall(items);
 	if (len(items) == 0) {
-		reply(serv, client, "error syntax\n");
+		reply(serv, client, "error Invalid command syntax\n");
 		return;
 	};
 
@@ -23,14 +23,14 @@ fn exec(serv: *server, client: *client, cmd: str) void = {
 	case "query" =>
 		exec_query(serv, client, items[1..]);
 	case =>
-		reply(serv, client, "error unknown command\n");
+		reply(serv, client, "error Unknown command\n");
 	};
 };
 
 fn exec_add(serv: *server, client: *client, args: []str) void = {
 	const q = match (query::parse_items(args)) {
 	case query::invalid =>
-		disconnect_error(client, "error query Invalid query");
+		disconnect_error(client, "error Invalid query");
 		return;
 	case let q: query::query =>
 		yield q;
@@ -43,7 +43,7 @@ fn exec_add(serv: *server, client: *client, args: []str) void = {
 fn exec_query(serv: *server, client: *client, args: []str) void = {
 	const q = match (query::parse_items(args)) {
 	case query::invalid =>
-		disconnect_error(client, "error query Invalid query");
+		disconnect_error(client, "error Invalid query");
 		return;
 	case let q: query::query =>
 		yield q;
