@@ -1,11 +1,12 @@
-use bytes;
 use bufio;
+use bytes;
 use fmt;
 use io;
+use log;
 use secstore;
-use unix;
 use unix::signal;
 use unix::tty;
+use unix;
 
 export fn main() void = {
 	const tty = match (tty::open()) {
@@ -53,7 +54,7 @@ export fn main() void = {
 	const sock = bind(sigfd);
 	defer shutdown(&sock);
 
-	fmt::println("himitsud running")!;
+	log::println("himitsud running");
 	for (dispatch(&sock)) void;
-	fmt::println("himitsud terminated")!;
+	log::println("himitsud terminated");
 };

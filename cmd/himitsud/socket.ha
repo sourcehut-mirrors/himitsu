@@ -4,6 +4,7 @@ use encoding::utf8;
 use errors;
 use fmt;
 use io;
+use log;
 use net::unix;
 use net;
 use os;
@@ -53,7 +54,7 @@ fn bind(signalfd: io::file) server = {
 	case let l: io::file =>
 		yield l;
 	case let err: net::error =>
-		fmt::fatal(net::strerror(err));
+		log::fatal(net::strerror(err));
 	};
 	os::chmod(sockpath, 0o700)!;
 
@@ -112,7 +113,7 @@ fn dispatch(serv: *server) bool = {
 	case errors::interrupted =>
 		yield;
 	case let err: errors::error =>
-		fmt::fatal("poll: {}", errors::strerror(err));
+		log::fatal("poll: {}", errors::strerror(err));
 	};
 	return true;
 };
@@ -123,10 +124,10 @@ fn accept(serv: *server) void = {
 	case let sock: io::file =>
 		yield sock;
 	case let err: net::error =>
-		fmt::fatal(net::strerror(err));
+		log::fatal(net::strerror(err));
 	};
 	if (len(serv.clients) >= MAX_CLIENTS) {
-		fmt::println("Max clients exceeded; dropping client")!;
+		log::println("Max clients exceeded; dropping client");
 		io::close(sock);
 		return;
 	};
@@ -149,7 +150,7 @@ fn accept(serv: *server) void = {
 fn dispatch_client(serv: *server, client: *client) void = {
 	const now = time::now(time::clock::MONOTONIC);
 	if (time::compare(now, client.deadline) >= 0) {
-		fmt::errorln("Client exceeded deadline, disconnecting")!;
+		log::println("Client exceeded deadline, disconnecting");
 		disconnect(serv, client);
 		return;
 	};
