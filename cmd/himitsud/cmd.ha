@@ -69,11 +69,11 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	);
 	defer getopt::finish(&cmd);
 
-	let private = false;
+	let decrypt = false;
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
 		switch (cmd.opts[i].0) {
 		case 'd' =>
-			private = true;
+			decrypt = true;
 		case => abort();
 		};
 	};
@@ -87,10 +87,8 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 	defer query::finish(&q);
 
-	// TODO: Prompt user for consent if private = true
-
-	let buf = bufio::dynamic(io::mode::WRITE);
 	const iter = secstore::query(serv.store, &q);
+	let matches: []*secstore::entry = [];
 	for (true) {
 		const item = match (secstore::next(serv.store, &iter)) {
 		case let item: *secstore::entry =>
@@ -98,9 +96,26 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		case void =>
 			break;
 		};
-		secstore::write(serv.store, &buf, item, private)?;
+		append(matches, item);
+	};
+
+	let buf = bufio::dynamic(io::mode::WRITE);
+	for (let i = 0z; i < len(matches); i += 1) {
+		// TODO: Prompt for all matches at once
+		if (decrypt) {
+			const consent = prompt(serv.store,
+				matches[i], prompt_mode::DISCLOSE);
+			if (!consent) {
+				reply(serv, client, "declined\n");
+				io::close(&buf);
+				return;
+			};
+		};
+
+		secstore::write(serv.store, &buf, matches[i], decrypt)?;
 		io::write(&buf, ['\n'])?;
 	};
+
 	client.wbuf = bufio::buffer(&buf);
 	client.state = client_state::WRITE;
 	client.pollfd.events = event::POLLOUT | event::POLLHUP;
