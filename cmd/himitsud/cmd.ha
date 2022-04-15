@@ -1,10 +1,13 @@
+use bufio;
+use io;
 use query;
 use secstore;
 use shlex;
 use strings;
-use fmt; // XXX TEMP
+use unix::poll::{event};
 
 fn exec(serv: *server, client: *client, cmd: str) void = {
+	// TODO: Better end-to-end error handling
 	const items = match (shlex::split(cmd)) {
 	case shlex::syntaxerr =>
 		reply(serv, client, "error Invalid command syntax\n");
@@ -50,6 +53,8 @@ fn exec_query(serv: *server, client: *client, args: []str) void = {
 		yield q;
 	};
 	defer query::finish(&q);
+
+	let buf = bufio::dynamic(io::mode::WRITE);
 	const iter = secstore::query(serv.store, &q);
 	for (true) {
 		const item = match (secstore::next(serv.store, &iter)) {
@@ -58,6 +63,10 @@ fn exec_query(serv: *server, client: *client, args: []str) void = {
 		case void =>
 			break;
 		};
-		fmt::println("match")!;
+		secstore::writeplain(&buf, item)!;
+		io::write(&buf, ['\n'])!;
 	};
+	client.wbuf = bufio::buffer(&buf);
+	client.state = client_state::WRITE;
+	client.pollfd.events = event::POLLOUT | event::POLLHUP;
 };
