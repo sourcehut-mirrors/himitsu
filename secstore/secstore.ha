@@ -135,12 +135,20 @@ export fn open(passphrase: []u8) (secstore | error) = {
 	const index = os::open(path::string(&buf),
 		fs::flags::RDWR | fs::flags::CLOEXEC | fs::flags::NOCTTY)?;
 
-	return secstore {
+	const store = secstore {
 		key = key,
 		dir = dir,
-		index = index, // TODO: Load entries from index
+		index = index,
 		entries = [],
 	};
+	match (load_index(&store)) {
+	case void => yield;
+	case let err: io::error =>
+		return err;
+	case errors::invalid =>
+		return badstore;
+	};
+	return store;
 };
 
 // Closes the secstore, freeing any associated resources.
@@ -238,4 +246,56 @@ fn add_index(store: *secstore, entry: *entry) void = {
 	io::write(&enc, box.2)!;
 	io::close(&enc);
 	fmt::fprintln(store.index)!;
+};
+
+fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
+	let key: [32]u8 = [0...];
+	defer bytes::zero(key);
+	keystore::read(store.key, key);
+
+	for (true) {
+		const line = match (bufio::scanline(store.index)?) {
+		case let line: []u8 =>
+			yield line;
+		case io::EOF =>
+			break;
+		};
+		defer free(line);
+
+		const buf = bufio::fixed(line, io::mode::READ);
+		const dec = base64::new_decoder(&base64::std_encoding, &buf);
+
+		let mac: crypto::mac = [0...];
+		let nonce: crypto::nonce = [0...];
+		io::readall(&dec, mac)?;
+		io::readall(&dec, nonce)?;
+		let ciphertext = io::drain(&dec)?;
+		defer {
+			bytes::zero(ciphertext);
+			free(ciphertext);
+		};
+
+		let box: crypto::box = (mac, nonce, ciphertext);
+		const plaintext = crypto::decrypt(&key, &box)?;
+		const buf = bufio::fixed(plaintext, io::mode::READ);
+		const q = query::parse(&buf)!;
+		defer query::finish(&q);
+
+		let pairs: []pair = [];
+		for (let i = 0z; i < len(q.items); i += 1) {
+			const item = q.items[i];
+			const val = if (item.private) {
+				yield uuid::decodestr(item.value)!;
+			} else {
+				yield strings::dup(item.value);
+			};
+			append(pairs, pair {
+				key = strings::dup(item.key),
+				value = val,
+			});
+		};
+		append(store.entries, entry {
+			pairs = pairs,
+		});
+	};
 };
