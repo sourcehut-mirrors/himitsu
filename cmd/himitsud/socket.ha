@@ -11,14 +11,12 @@ use os;
 use path;
 use secstore;
 use strings;
-use time;
 use unix::poll;
 use unix::poll::{event};
 use unix::signal;
 
 def CLIENT_MAXBUF: size = 16777216; // 16 MiB
 def MAX_CLIENTS: size = 256;
-def DEADLINE: time::duration = 5 * time::MINUTE;
 def POLLFD_RESERVED: size = 2;
 
 type server = struct {
@@ -40,7 +38,6 @@ type client = struct {
 	sock: io::file,
 	state: client_state,
 	pollfd: *poll::pollfd,
-	deadline: time::instant,
 	rbuf: []u8,
 	wbuf: []u8,
 };
@@ -140,24 +137,15 @@ fn accept(serv: *server) void = {
 		events = event::POLLIN | event::POLLHUP,
 		...
 	});
-	const deadline = time::add(time::now(time::clock::MONOTONIC), DEADLINE);
 	const pollfd = &serv.pollfd[len(serv.pollfd) - 1];
 	append(serv.clients, client {
 		sock = sock,
 		pollfd = pollfd,
-		deadline = deadline,
 		...
 	});
 };
 
 fn dispatch_client(serv: *server, client: *client) void = {
-	const now = time::now(time::clock::MONOTONIC);
-	if (time::compare(now, client.deadline) >= 0) {
-		log::println("Client exceeded deadline, disconnecting");
-		disconnect(serv, client);
-		return;
-	};
-
 	const pollfd = client.pollfd;
 	if (pollfd.revents & event::POLLERR != 0) {
 		disconnect(serv, client);
