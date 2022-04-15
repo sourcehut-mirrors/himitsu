@@ -7,10 +7,12 @@ use dirs;
 use encoding::base64;
 use errors;
 use fmt;
+use fs;
 use io;
 use os;
 use path;
 use query;
+use shlex;
 use strconv;
 use strings;
 use uuid;
@@ -48,11 +50,11 @@ export fn create(passphrase: []u8) (secstore | error) = {
 
 	path::set(&buf, dir, "index")!;
 	const index = os::create(path::string(&buf), 0o600)?;
-	io::close(index);
 
 	return secstore {
 		key = key,
 		dir = dir,
+		index = index,
 		entries = [],
 	};
 };
@@ -128,16 +130,22 @@ export fn open(passphrase: []u8) (secstore | error) = {
 	};
 
 	const key = keystore::newkey(key[..32], "secstore")!;
+
+	path::set(&buf, dir, "index")!;
+	const index = os::open(path::string(&buf),
+		fs::flags::RDWR | fs::flags::CLOEXEC | fs::flags::NOCTTY)?;
+
 	return secstore {
 		key = key,
 		dir = dir,
-		// TODO: Load entries from index
+		index = index, // TODO: Load entries from index
 		entries = [],
 	};
 };
 
 // Closes the secstore, freeing any associated resources.
 export fn close(store: *secstore) void = {
+	io::close(store.index);
 	keystore::destroy(store.key);
 	free(store.dir);
 };
@@ -145,6 +153,7 @@ export fn close(store: *secstore) void = {
 // Adds an item to the keystore. The provided query must not have any missing
 // values.
 export fn add(store: *secstore, q: *query::query) void = {
+	// TODO: Better error handling
 	let pairs: []pair = [];
 	for (let i = 0z; i < len(q.items); i += 1) {
 		const item = q.items[i];
@@ -159,10 +168,10 @@ export fn add(store: *secstore, q: *query::query) void = {
 			value = val,
 		});
 	};
-	// TODO: Write to index
 	append(store.entries, entry {
 		pairs = pairs,
 	});
+	add_index(store, &store.entries[len(store.entries) - 1]);
 };
 
 fn add_secret(store: *secstore, val: str) uuid::uuid = {
@@ -189,4 +198,44 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 	io::write(file, box.1)!;
 	io::write(file, box.2)!;
 	return id;
+};
+
+fn add_index(store: *secstore, entry: *entry) void = {
+	let buf = bufio::dynamic(io::mode::WRITE);
+	defer io::close(&buf);
+
+	for (let i = 0z; i < len(entry.pairs); i += 1) {
+		const pair = &entry.pairs[i];
+		shlex::quote(&buf, pair.key)!;
+
+		match (pair.value) {
+		case let uuid: uuid::uuid =>
+			fmt::fprint(&buf, "!=")!;
+			uuid::encode(&buf, uuid)!;
+		case let val: str =>
+			fmt::fprint(&buf, "=")!;
+			shlex::quote(&buf, val)!;
+		};
+
+		if (i + 1 < len(entry.pairs)) {
+			fmt::fprint(&buf, " ")!;
+		};
+	};
+
+	const buf = bufio::buffer(&buf);
+
+	let key: [32]u8 = [0...];
+	defer bytes::zero(key);
+	keystore::read(store.key, key);
+
+	let nonce: crypto::nonce = [0...];
+	random::buffer(nonce);
+
+	const box = crypto::encrypt(&key, &nonce, buf);
+	const enc = base64::new_encoder(&base64::std_encoding, store.index);
+	io::write(&enc, box.0)!;
+	io::write(&enc, box.1)!;
+	io::write(&enc, box.2)!;
+	io::close(&enc);
+	fmt::fprintln(store.index)!;
 };

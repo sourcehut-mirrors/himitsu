@@ -7,6 +7,7 @@ use uuid;
 export type secstore = struct {
 	key: keystore::key,
 	dir: str,
+	index: io::handle,
 	// TODO: Consider adding hash table or btree or something. Might be fun
 	// to write the first b-tree in hare and see how it goes
 	entries: []entry,
