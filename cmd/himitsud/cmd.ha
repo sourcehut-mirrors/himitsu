@@ -2,6 +2,7 @@ use query;
 use secstore;
 use shlex;
 use strings;
+use fmt; // XXX TEMP
 
 fn exec(serv: *server, client: *client, cmd: str) void = {
 	const items = match (shlex::split(cmd)) {
@@ -49,5 +50,14 @@ fn exec_query(serv: *server, client: *client, args: []str) void = {
 		yield q;
 	};
 	defer query::finish(&q);
-	// TODO
+	const iter = secstore::query(serv.store, &q);
+	for (true) {
+		const item = match (secstore::next(serv.store, &iter)) {
+		case let item: *secstore::entry =>
+			yield item;
+		case void =>
+			break;
+		};
+		fmt::println("match")!;
+	};
 };
