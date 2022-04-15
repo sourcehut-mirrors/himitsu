@@ -8,31 +8,31 @@ use unix::poll::{event};
 
 fn exec(serv: *server, client: *client, cmd: str) void = {
 	// TODO: Better end-to-end error handling
-	const items = match (shlex::split(cmd)) {
+	const args = match (shlex::split(cmd)) {
 	case shlex::syntaxerr =>
 		reply(serv, client, "error Invalid command syntax\n");
 		return;
 	case let items: []str =>
 		yield items;
 	};
-	defer strings::freeall(items);
-	if (len(items) == 0) {
+	defer strings::freeall(args);
+	if (len(args) == 0) {
 		reply(serv, client, "error Invalid command syntax\n");
 		return;
 	};
 
-	switch (items[0]) {
+	switch (args[0]) {
 	case "add" =>
-		exec_add(serv, client, items[1..]);
+		exec_add(serv, client, args);
 	case "query" =>
-		exec_query(serv, client, items[1..]);
+		exec_query(serv, client, args);
 	case =>
 		reply(serv, client, "error Unknown command\n");
 	};
 };
 
 fn exec_add(serv: *server, client: *client, args: []str) void = {
-	const q = match (query::parse_items(args)) {
+	const q = match (query::parse_items(args[1..])) {
 	case query::invalid =>
 		disconnect_error(client, "error Invalid query");
 		return;
@@ -45,7 +45,7 @@ fn exec_add(serv: *server, client: *client, args: []str) void = {
 };
 
 fn exec_query(serv: *server, client: *client, args: []str) void = {
-	const q = match (query::parse_items(args)) {
+	const q = match (query::parse_items(args[1..])) {
 	case query::invalid =>
 		disconnect_error(client, "error Invalid query");
 		return;
