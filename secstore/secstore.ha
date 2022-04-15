@@ -182,6 +182,7 @@ export fn add(store: *secstore, q: *query::query) void = {
 	add_index(store, &store.entries[len(store.entries) - 1]);
 };
 
+// Encrypts and stores a secret value, returning its assigned UUID.
 fn add_secret(store: *secstore, val: str) uuid::uuid = {
 	let id = uuid::generate();
 	let idstr = uuid::encodestr(id);
@@ -208,6 +209,7 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 	return id;
 };
 
+// Encrypts and writes an entry to the index.
 fn add_index(store: *secstore, entry: *entry) void = {
 	let buf = bufio::dynamic(io::mode::WRITE);
 	defer io::close(&buf);
@@ -248,6 +250,7 @@ fn add_index(store: *secstore, entry: *entry) void = {
 	fmt::fprintln(store.index)!;
 };
 
+// Decrypts and loads keystore entries from the index.
 fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 	let key: [32]u8 = [0...];
 	defer bytes::zero(key);
