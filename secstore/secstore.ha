@@ -184,9 +184,8 @@ export fn add(store: *secstore, q: *query::query) void = {
 
 // Encrypts and stores a secret value, returning its assigned UUID.
 fn add_secret(store: *secstore, val: str) uuid::uuid = {
-	let id = uuid::generate();
-	let idstr = uuid::encodestr(id);
-	defer free(idstr);
+	const id = uuid::generate();
+	const idstr = uuid::encodestr(id);
 
 	let buf = path::init();
 	path::set(&buf, store.dir, idstr)!;
