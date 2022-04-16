@@ -121,7 +121,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		secstore::write(serv.store, &buf, matches[i], decrypt)?;
 		io::write(&buf, ['\n'])?;
 	};
-	fmt::fprintln(&buf, "done")?;
+	fmt::fprintln(&buf, "end")?;
 
 	writebuf(client, bufio::buffer(&buf));
 };
