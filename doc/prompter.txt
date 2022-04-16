@@ -1,0 +1,100 @@
+TODO:
+- Convert me to a man page
+- Add means of prompting for the user to fill in an incomplete key
+
+			       Prompter protocol
+
+The prompter will be executed by himitsud when the user's input is required for
+an operation. Details about the desired behavior of the prompter will be written
+to its stdin in a line-oriented text format (with LF line endings). Each line
+begins with a operation or parameter name (e.g. "key"), followed by a
+whitespace-separated list of additional arguments, which the prompter should
+split into fields according to POSIX shell quoting rules.
+
+The first line written to stdin determines the operating mode of the prompter,
+and subsequent lines provide additional parameters to the prompter. Following
+the last line, stdin is closed and the prompter should commence its work.
+
+The prompter should abort if it encounters an operating mode that it was not
+designed to accomodate, but should continue normally upon encountering other
+unknown parameters.
+
+				  Exit status
+
+The exit status of the prompter is semantically meaningful.
+
+	0	The user consented to the operation OR the operation was
+		completed successfully
+	1 	User did not consent to the operation
+	2-126	Reserved for future use
+	127	An internal error occured with the prompter
+
+				Operating modes
+
+	disclose <version>
+
+The disclose operation is used when an application has requested the ability to
+view the user's secret information. The application can, in theory, store the
+user's credentials for later use without their permission. The language the
+prompter uses to explain this to the user should reflect this fact.
+
+Following the operation, one or more "key" parameters will be sent.
+
+If the user consents to disclose their credentials, the prompter should exit
+with status code zero. Otherwise, the prompter should exit with a non-zero
+status code.
+
+The current semantic version of this operation is 0.0.0. If the prompter does
+not support the version provided, it should exit with status code 127.
+
+	agent <version>
+
+The agent operation is used when an application has requested the use of the
+user's credentials via an agent. This allows the application to perform an
+authenticated action, such as establishing a secure connection, but does not
+disclose the user's credentials to the application: it only works once. The
+language the prompter uses to explain this to the user should reflect this fact.
+
+Following the operation, one or more "key" parameters will be sent.
+
+The current semantic version of this operation is 0.0.0. If the prompter does
+not support the version provided, it should exit with status code 127.
+
+	unlock <version>
+
+The unlock operation is used when the secret store needs to be unlocked. The
+prompter should ask the user to provide their password, then write the password
+to stdout, followed by a newline.
+
+If the user has previously entered an incorrect password, the
+"incorrect-password" parameter will be written to stdin to indicate this.
+
+Following the "unlock" operation and any of its parameters, an additional
+operation MAY be written to stdin. This indicates that the reason the keyring is
+being unlocked is to facilitate an authenticated operation. In this case, the
+prompter should present the UI for entering a password AND the UI for consenting
+to this operation.
+
+The current semantic version of this operation is 0.0.0. If the prompter does
+not support the version provided, it should exit with status code 127.
+
+				Parameter types
+
+	client-name <name...>
+
+The client-name parameter is included when a client provides a name for itself
+to be presented to the user. Note that the client can submit any name it
+pleases; the prompter should be careful to present it as truth.
+
+	key <query...>
+
+The key parameter provides information about a key which is involved in an
+operation. The format of a key is a whitespace-delimited list of key/value
+pairs, delimited per shell quoting rules. Each key/value pair separates the key
+from the value with an '='. The value may be absent; in this case the '=' is
+omitted as well. The key may be suffixed with the '!' character to indicate that
+it is private, or a '?' character to indicate it is optional.
+
+	incorrect-password
+
+See "unlock" under "Operating Modes" for details.
