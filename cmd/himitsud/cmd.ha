@@ -1,5 +1,6 @@
 use bufio;
 use errors;
+use fmt;
 use fs;
 use getopt;
 use io;
@@ -119,6 +120,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		secstore::write(serv.store, &buf, matches[i], decrypt)?;
 		io::write(&buf, ['\n'])?;
 	};
+	fmt::fprintln(&buf, "done")?;
 
 	writebuf(client, bufio::buffer(&buf));
 };
