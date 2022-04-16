@@ -117,6 +117,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 			};
 		};
 
+		fmt::fprint(&buf, "key ")?;
 		secstore::write(serv.store, &buf, matches[i], decrypt)?;
 		io::write(&buf, ['\n'])?;
 	};
