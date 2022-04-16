@@ -111,7 +111,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 			const consent = prompt(serv.store,
 				matches[i], prompt_mode::DISCLOSE)?;
 			if (!consent) {
-				writefmt(client, "declined");
+				writefmt(client, "error User declined");
 				io::close(&buf);
 				return;
 			};
