@@ -68,7 +68,7 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const q = query::parse_items(args[1..])?;
 	defer query::finish(&q);
-	// TODO: More validation steps here
+	// TODO: Prompt user to fill in incomplete keys
 	secstore::add(serv.store, &q);
 };
 
