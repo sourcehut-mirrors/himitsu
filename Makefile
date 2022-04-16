@@ -1,7 +1,7 @@
 .POSIX:
 .SUFFIXES:
 
-all: himitsud himitsu-init
+all: himitsud himitsu-init hiq
 
 himitsud:
 	hare build -o $@ cmd/$@/
@@ -9,10 +9,13 @@ himitsud:
 himitsu-init:
 	hare build -o $@ cmd/$@/
 
+hiq:
+	hare build -o $@ cmd/$@/
+
 check:
 	hare test
 
 clean:
-	rm -f himitsud himitsu-init
+	rm -f himitsud himitsu-init hiq
 
-.PHONY: himitsud himitsu-init check clean
+.PHONY: himitsud himitsu-init hiq check clean
