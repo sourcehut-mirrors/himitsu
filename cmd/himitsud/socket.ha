@@ -28,20 +28,6 @@ type server = struct {
 	store: *secstore::secstore,
 };
 
-type client_state = enum {
-	READ,
-	WRITE,
-	WRITE_ERROR,
-};
-
-type client = struct {
-	sock: io::file,
-	state: client_state,
-	pollfd: *poll::pollfd,
-	rbuf: []u8,
-	wbuf: []u8,
-};
-
 fn bind(store: *secstore::secstore, signalfd: io::file) server = {
 	const statedir = dirs::state("himitsu");
 	os::mkdirs(statedir)!;
@@ -139,6 +125,7 @@ fn accept(serv: *server) void = {
 	});
 	const pollfd = &serv.pollfd[len(serv.pollfd) - 1];
 	append(serv.clients, client {
+		server = serv,
 		sock = sock,
 		pollfd = pollfd,
 		...
@@ -148,11 +135,11 @@ fn accept(serv: *server) void = {
 fn dispatch_client(serv: *server, client: *client) void = {
 	const pollfd = client.pollfd;
 	if (pollfd.revents & event::POLLERR != 0) {
-		disconnect(serv, client);
+		disconnect(client);
 		return;
 	};
 	if (pollfd.revents & event::POLLHUP != 0) {
-		disconnect(serv, client);
+		disconnect(client);
 		return;
 	};
 	if (pollfd.revents & event::POLLIN != 0) {
@@ -169,7 +156,7 @@ fn client_readable(serv: *server, client: *client) void = {
 	case let z: size =>
 		yield z;
 	case let err: io::error =>
-		disconnect(serv, client);
+		disconnect(client);
 		return;
 	};
 	append(client.rbuf, buf[..z]...);
@@ -194,7 +181,13 @@ fn client_readable(serv: *server, client: *client) void = {
 			return;
 		};
 		defer delete(client.rbuf[..i+1]);
-		exec(serv, client, line);
+		match (exec(serv, client, line)) {
+		case let err: servererror =>
+			log::printfln("Error processing user command: {}",
+				strerror(err));
+		case void =>
+			yield;
+		};
 		if (serv.disconnected) {
 			break;
 		};
@@ -208,7 +201,7 @@ fn client_writable(serv: *server, client: *client) void = {
 	case errors::again =>
 		return;
 	case let err: io::error =>
-		disconnect(serv, client);
+		disconnect(client);
 		return;
 	};
 	delete(client.wbuf[..z]);
@@ -217,43 +210,11 @@ fn client_writable(serv: *server, client: *client) void = {
 	};
 
 	switch (client.state) {
-	case client_state::WRITE =>
-		client.state = client_state::READ;
+	case state::WRITE =>
+		client.state = state::READ;
 		client.pollfd.events = event::POLLIN | event::POLLHUP;
-	case client_state::WRITE_ERROR =>
-		disconnect(serv, client);
+	case state::WRITE_ERROR =>
+		disconnect(client);
 	case => abort();
 	};
-};
-
-fn reply(serv: *server, client: *client, reply: str) void = {
-	assert(client.state != client_state::WRITE
-		&& client.state != client_state::WRITE_ERROR);
-	client.wbuf = alloc(strings::toutf8(reply)...);
-	client.state = client_state::WRITE;
-	client.pollfd.events = event::POLLOUT | event::POLLHUP;
-};
-
-fn disconnect(serv: *server, c: *client) void = {
-	io::close(c.sock);
-	free(c.rbuf);
-	free(c.wbuf);
-
-	let i = (c: uintptr - serv.clients: *[*]client: uintptr): size / size(client);
-	delete(serv.clients[i]);
-	delete(serv.pollfd[i + POLLFD_RESERVED]);
-
-	serv.disconnected = true;
-};
-
-fn disconnect_error(
-	client: *client,
-	fmt: str,
-	args: fmt::field...
-) void = {
-	free(client.wbuf);
-	const msg = fmt::asprintf(fmt, args...);
-	client.wbuf = strings::toutf8(msg);
-	client.state = client_state::WRITE_ERROR;
-	client.pollfd.events = event::POLLOUT | event::POLLHUP;
 };

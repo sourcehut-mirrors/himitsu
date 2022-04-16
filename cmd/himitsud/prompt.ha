@@ -15,12 +15,12 @@ export fn prompt(
 	store: *secstore::secstore,
 	entry: *secstore::entry,
 	mode: prompt_mode,
-) bool = {
-	// TODO: Configurable prompter, better error handling
-	const cmd = exec::cmd("hiprompt-gtk")!;
+) (bool | exec::error | io::error) = {
+	// TODO: Configurable prompter
+	const cmd = exec::cmd("hiprompt-gtk")?;
 	const pipe = exec::pipe();
 	exec::addfile(&cmd, os::stdin_file, pipe.0);
-	const proc = exec::start(&cmd)!;
+	const proc = exec::start(&cmd)?;
 	io::close(pipe.0);
 
 	fmt::fprintfln(pipe.1, "{} 0.0.0", switch (mode) {
@@ -30,11 +30,11 @@ export fn prompt(
 		yield "agent";
 	})!;
 
-	fmt::fprint(pipe.1, "key ")!;
+	fmt::fprint(pipe.1, "key ")?;
 	secstore::write(store, pipe.1, entry, false)!;
-	fmt::fprintln(pipe.1)!;
+	fmt::fprintln(pipe.1)?;
 	io::close(pipe.1);
 
-	const res = exec::wait(&proc)!;
+	const res = exec::wait(&proc)?;
 	return exec::check(&res) is void;
 };
