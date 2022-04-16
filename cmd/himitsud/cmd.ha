@@ -69,7 +69,12 @@ fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const q = query::parse_items(args[1..])?;
 	defer query::finish(&q);
 	// TODO: Prompt user to fill in incomplete keys
-	secstore::add(serv.store, &q);
+	let entry = secstore::add(serv.store, &q);
+	let buf = bufio::dynamic(io::mode::WRITE);
+	fmt::fprint(&buf, "key ")?;
+	secstore::write(serv.store, &buf, entry, false)?;
+	fmt::fprintln(&buf, "\nend")?;
+	write(client, bufio::buffer(&buf));
 };
 
 fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {

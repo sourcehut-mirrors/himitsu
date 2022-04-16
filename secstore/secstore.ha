@@ -160,7 +160,7 @@ export fn close(store: *secstore) void = {
 
 // Adds an item to the keystore. The provided query must not have any missing
 // values.
-export fn add(store: *secstore, q: *query::query) void = {
+export fn add(store: *secstore, q: *query::query) *entry = {
 	// TODO: Better error handling
 	let pairs: []pair = [];
 	for (let i = 0z; i < len(q.items); i += 1) {
@@ -179,7 +179,9 @@ export fn add(store: *secstore, q: *query::query) void = {
 	append(store.entries, entry {
 		pairs = pairs,
 	});
-	add_index(store, &store.entries[len(store.entries) - 1]);
+	let entry = &store.entries[len(store.entries) - 1];
+	add_index(store, entry);
+	return entry;
 };
 
 // Encrypts and stores a secret value, returning its assigned UUID.
