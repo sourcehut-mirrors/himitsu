@@ -1,8 +1,20 @@
 use bufio;
 use encoding::utf8;
 use io;
+use regex;
 use shlex;
 use strings;
+use fmt;
+
+let keyre: regex::regex = regex::regex { ... };
+
+@init fn init() void = {
+	keyre = regex::compile(`^[-_A-Za-z]+$`)!;
+};
+
+@fini fn fini() void = {
+	regex::regex_free(keyre);
+};
 
 export type query = struct {
 	items: []pair,
@@ -54,6 +66,15 @@ export fn parse_items(items: []str) (query | invalid) = {
 			optional = true;
 		};
 		key = strings::trim(key, '?', '!');
+
+		match (regex::find(keyre, key)!) {
+		case let group: []regex::matchgroup =>
+			// XXX: https://todo.sr.ht/~sircmpwn/hare/628
+			regex::freeall(alloc([group]));
+		case void =>
+			return invalid;
+		};
+
 		append(query.items, pair {
 			key = strings::dup(key),
 			value = strings::dup(value),
