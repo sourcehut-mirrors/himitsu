@@ -243,7 +243,7 @@ fn add_index(store: *secstore, entry: *entry) void = {
 	random::buffer(nonce);
 
 	const box = crypto::encrypt(&key, &nonce, buf);
-	const enc = base64::new_encoder(&base64::std_encoding, store.index);
+	const enc = base64::newencoder(&base64::std_encoding, store.index);
 	io::write(&enc, box.0)!;
 	io::write(&enc, box.1)!;
 	io::write(&enc, box.2)!;
@@ -267,7 +267,7 @@ fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 		defer free(line);
 
 		const buf = bufio::fixed(line, io::mode::READ);
-		const dec = base64::new_decoder(&base64::std_encoding, &buf);
+		const dec = base64::newdecoder(&base64::std_encoding, &buf);
 
 		let mac: crypto::mac = [0...];
 		let nonce: crypto::nonce = [0...];

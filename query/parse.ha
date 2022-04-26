@@ -13,7 +13,7 @@ let keyre: regex::regex = regex::regex { ... };
 };
 
 @fini fn fini() void = {
-	regex::regex_free(keyre);
+	regex::regex_finish(&keyre);
 };
 
 export type query = struct {
