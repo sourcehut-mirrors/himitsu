@@ -79,7 +79,7 @@ export fn main() void = {
 	case let e: net::error =>
 		fmt::fatal(net::strerror(e));
 	};
-	defer io::close(conn);
+	defer io::close(conn)!;
 
 	fmt::fprint(conn, if (flags & flag::ADD != 0) "add" else "query")!;
 	for (let i = 0z; i < len(query); i += 1) {
@@ -89,7 +89,7 @@ export fn main() void = {
 	fmt::fprintln(conn)!;
 
 	let buf = strio::dynamic();
-	defer io::close(&buf);
+	defer io::close(&buf)!;
 
 	for (let n = 0; true; n += 1) match (bufio::scanline(conn)!) {
 	case io::EOF => break;

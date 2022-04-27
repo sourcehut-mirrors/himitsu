@@ -64,7 +64,7 @@ fn bind(store: *secstore::secstore, signalfd: io::file) server = {
 
 fn shutdown(serv: *server) void = {
 	for (let i = 0z; i < len(serv.clients); i += 1) {
-		io::close(serv.clients[i].sock);
+		io::close(serv.clients[i].sock)!;
 		free(serv.clients[i].rbuf);
 		free(serv.clients[i].wbuf);
 	};
@@ -114,7 +114,7 @@ fn accept(serv: *server) void = {
 	};
 	if (len(serv.clients) >= MAX_CLIENTS) {
 		log::println("Max clients exceeded; dropping client");
-		io::close(sock);
+		io::close(sock)!;
 		return;
 	};
 

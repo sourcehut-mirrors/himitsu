@@ -37,10 +37,10 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	let buf = path::init();
 	path::set(&buf, dir, "key")!;
 	const keyfile = os::create(path::string(&buf), 0o600)?;
-	defer io::close(keyfile);
+	defer io::close(keyfile)!;
 	let wbuf: [os::BUFSIZ]u8 = [0...];
 	const keyfile = &bufio::buffered(keyfile, [], wbuf);
-	defer io::close(keyfile);
+	defer io::close(keyfile)!;
 
 	fmt::fprintf(keyfile, "argon2i:{}:{}:", KEY_MEM, KEY_PASSES)?;
 	base64::encode(keyfile, &base64::std_encoding, salt)?;
@@ -67,7 +67,7 @@ export fn open(passphrase: []u8) (secstore | error) = {
 	path::set(&buf, dir, "key")!;
 
 	const input = os::open(path::string(&buf))?;
-	defer io::close(input);
+	defer io::close(input)!;
 	let rbuf: [os::BUFSIZ]u8 = [0...];
 	const input = &bufio::buffered(input, rbuf, []);
 
@@ -153,7 +153,7 @@ export fn open(passphrase: []u8) (secstore | error) = {
 
 // Closes the secstore, freeing any associated resources.
 export fn close(store: *secstore) void = {
-	io::close(store.index);
+	io::close(store.index)!;
 	keystore::destroy(store.key);
 	free(store.dir);
 };
@@ -193,7 +193,7 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 	path::set(&buf, store.dir, idstr)!;
 
 	const file = os::create(path::string(&buf), 0o600)!;
-	defer io::close(file);
+	defer io::close(file)!;
 
 	let key: [32]u8 = [0...];
 	defer bytes::zero(key);
@@ -213,7 +213,7 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 // Encrypts and writes an entry to the index.
 fn add_index(store: *secstore, entry: *entry) void = {
 	let buf = bufio::dynamic(io::mode::WRITE);
-	defer io::close(&buf);
+	defer io::close(&buf)!;
 
 	for (let i = 0z; i < len(entry.pairs); i += 1) {
 		const pair = &entry.pairs[i];
@@ -247,7 +247,7 @@ fn add_index(store: *secstore, entry: *entry) void = {
 	io::write(&enc, box.0)!;
 	io::write(&enc, box.1)!;
 	io::write(&enc, box.2)!;
-	io::close(&enc);
+	io::close(&enc)!;
 	fmt::fprintln(store.index)!;
 };
 

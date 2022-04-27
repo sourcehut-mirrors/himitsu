@@ -21,7 +21,7 @@ export fn prompt(
 	const pipe = exec::pipe();
 	exec::addfile(&cmd, os::stdin_file, pipe.0);
 	const proc = exec::start(&cmd)?;
-	io::close(pipe.0);
+	io::close(pipe.0)!;
 
 	fmt::fprintfln(pipe.1, "{} 0.0.0", switch (mode) {
 	case prompt_mode::DISCLOSE =>
@@ -33,7 +33,7 @@ export fn prompt(
 	fmt::fprint(pipe.1, "key ")?;
 	secstore::write(store, pipe.1, entry, false)!;
 	fmt::fprintln(pipe.1)?;
-	io::close(pipe.1);
+	io::close(pipe.1)!;
 
 	const res = exec::wait(&proc)?;
 	return exec::check(&res) is void;

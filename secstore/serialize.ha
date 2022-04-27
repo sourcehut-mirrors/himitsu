@@ -36,7 +36,7 @@ export fn write(
 				// stream-oriented interface
 				fmt::fprint(sink, "=")?;
 				let buf = strio::dynamic();
-				defer io::close(&buf);
+				defer io::close(&buf)!;
 				write_private(store, &buf, u)?;
 				shlex::quote(sink, strio::string(&buf))?;
 			};
@@ -58,7 +58,7 @@ fn write_private(
 	path::set(&buf, store.dir, idstr)!;
 
 	const file = os::open(path::string(&buf))?;
-	defer io::close(file);
+	defer io::close(file)!;
 
 	let mac: crypto::mac = [0...];
 	let nonce: crypto::nonce = [0...];

@@ -49,7 +49,7 @@ export fn main() void = {
 
 	signal::block(signal::SIGINT, signal::SIGTERM);
 	const sigfd = signal::signalfd(signal::SIGINT, signal::SIGTERM)!;
-	defer io::close(sigfd);
+	defer io::close(sigfd)!;
 
 	const sock = bind(&store, sigfd);
 	defer shutdown(&sock);

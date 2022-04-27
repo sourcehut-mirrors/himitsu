@@ -22,7 +22,7 @@ export fn main() void = {
 	let rbuf: [os::BUFSIZ]u8 = [0...];
 	let wbuf: [os::BUFSIZ]u8 = [0...];
 	const tty = &bufio::buffered(tty, rbuf, wbuf);
-	defer io::close(tty);
+	defer io::close(tty)!;
 
 	fmt::errorln("Initializing a new himitsu secstore.")!;
 	fmt::error("Please enter a passphrase: ")!;

@@ -21,7 +21,7 @@ type client = struct {
 
 // Immediately disconnects a client, without sending them an error message.
 fn disconnect(c: *client) void = {
-	io::close(c.sock);
+	io::close(c.sock)!;
 	free(c.rbuf);
 	free(c.wbuf);
 
