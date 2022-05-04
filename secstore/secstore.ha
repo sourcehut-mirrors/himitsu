@@ -1,5 +1,6 @@
 use bufio;
 use bytes;
+use crypto::argon2;
 use crypto::keystore;
 use crypto::random;
 use crypto;
@@ -28,7 +29,15 @@ export fn create(passphrase: []u8) (secstore | error) = {
 
 	let salt: [16]u8 = [0...];
 	random::buffer(salt);
-	crypto::derivekey(key, salt, passphrase, KEY_MEM, KEY_PASSES)!;
+	// TODO: Switch to argon2id by default
+	const config = argon2::config {
+		mem = KEY_MEM,
+		parallel = 1,
+		passes = KEY_PASSES + 3,
+		version = argon2::VERSION,
+		...
+	};
+	argon2::argon2i(key, passphrase, salt, &config)!;
 
 	const verify = key[32..];
 	const key = keystore::newkey(key[..32], "secstore")!;
@@ -123,7 +132,15 @@ export fn open(passphrase: []u8) (secstore | error) = {
 	let key: [32 + 16]u8 = [0...];
 	defer bytes::zero(key);
 
-	crypto::derivekey(key, salt, passphrase, mem, passes)!;
+	// TODO: Switch to argon2id by default
+	const config = argon2::config {
+		mem = mem,
+		parallel = 1,
+		passes = passes + 3,
+		version = argon2::VERSION,
+		...
+	};
+	argon2::argon2i(key, passphrase, salt, &config)!;
 
 	if (!crypto::compare(key[32..], verify)) {
 		return badpass;
