@@ -18,4 +18,4 @@ check:
 clean:
 	rm -f himitsud himitsu-init hiq
 
-.PHONY: himitsud himitsu-init hiq check clean
+.PHONY: all himitsud himitsu-init hiq check clean
