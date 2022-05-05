@@ -13,7 +13,7 @@ export fn main() void = {
 	case let file: io::file =>
 		yield file;
 	case let err: tty::error =>
-		fmt::fatal("Error opening tty: {}", tty::strerror(err));
+		fmt::fatal("Error opening tty:", tty::strerror(err));
 	};
 
 	const termios = tty::termios_query(tty)!;
@@ -40,7 +40,7 @@ export fn main() void = {
 
 	const store = match (store) {
 	case let err: secstore::error =>
-		fmt::fatal("Error opening secstore: {}",
+		fmt::fatal("Error opening secstore:",
 			secstore::strerror(err));
 	case let store: secstore::secstore =>
 		yield store;

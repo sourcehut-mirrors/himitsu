@@ -99,7 +99,7 @@ fn dispatch(serv: *server) bool = {
 	case errors::interrupted =>
 		yield;
 	case let err: errors::error =>
-		log::fatal("poll: {}", errors::strerror(err));
+		log::fatal("poll:", errors::strerror(err));
 	};
 	return true;
 };
