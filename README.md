@@ -34,3 +34,9 @@ Please enter your passphrase to unlock the keystore:
 ```
 
 Then use hiq(1) to interact with it.
+
+## Library usage
+
+The himitsu package provides a "himitsu" Hare module which provides some support
+code for integrations such as new prompters and agents. Consult haredoc for
+usage details.
