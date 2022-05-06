@@ -47,6 +47,8 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 	const cmd = switch (args[0]) {
 	case "add" =>
 		yield &exec_add;
+	case "del" =>
+		yield &exec_del;
 	case "query" =>
 		yield &exec_query;
 	case =>
@@ -75,6 +77,33 @@ fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	secstore::write(serv.store, &buf, entry, false)?;
 	fmt::fprintln(&buf, "\nend")?;
 	write(client, bufio::buffer(&buf));
+};
+
+fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	const q = query::parse_items(args[1..])?;
+	defer query::finish(&q);
+
+	let buf = bufio::dynamic(io::mode::WRITE);
+
+	// TODO: Prompt for consent
+	const iter = secstore::query(serv.store, &q);
+	let matches: []*secstore::entry = [];
+	for (true) {
+		const item = match (secstore::next(serv.store, &iter)) {
+		case let item: *secstore::entry =>
+			yield item;
+		case void =>
+			break;
+		};
+		fmt::fprint(&buf, "key ")?;
+		secstore::write(serv.store, &buf, item, false)?;
+		io::write(&buf, ['\n'])?;
+	};
+
+	secstore::del(serv.store, &q);
+
+	fmt::fprintln(&buf, "end")?;
+	writebuf(client, bufio::buffer(&buf));
 };
 
 fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {

@@ -12,10 +12,15 @@ use shlex;
 use strings;
 use strio;
 
-type flag = enum u8 {
+type flag = enum uint {
 	ONE = 1 << 0,
-	ADD = 1 << 1,
-	DECRYPT = 1 << 2,
+	DECRYPT = 1 << 1,
+};
+
+type operation = enum uint {
+	QUERY,
+	ADD,
+	DEL,
 };
 
 fn write_item(
@@ -43,23 +48,27 @@ export fn main() void = {
 	let usage: [_]getopt::help = [
 		"secure key store client",
 		('1', "only accept one match"),
-		('d', "decrypt private keys"),
 		('a', "add a key"),
+		('d', "decrypt private keys"),
+		('D', "delete matching keys"),
 		('F', "field", "select a field for output"),
 		"<query>",
 	];
 	const cmd = getopt::parse(os::args, usage...);
 	defer getopt::finish(&cmd);
 
+	let op = operation::QUERY;
 	let flags: flag = 0, field = "";
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
 		switch (cmd.opts[i].0) {
 		case '1' =>
 			flags |= flag::ONE;
 		case 'a' =>
-			flags |= flag::ADD;
+			op = operation::ADD;
 		case 'd' =>
 			flags |= flag::DECRYPT;
+		case 'D' =>
+			op = operation::DEL;
 		case 'F' =>
 			field = cmd.opts[i].1;
 		};
@@ -81,7 +90,14 @@ export fn main() void = {
 	};
 	defer io::close(conn)!;
 
-	fmt::fprint(conn, if (flags & flag::ADD != 0) "add" else "query")!;
+	fmt::fprint(conn, switch (op) {
+	case operation::QUERY =>
+		yield "query";
+	case operation::ADD =>
+		yield "add";
+	case operation::DEL =>
+		yield "del";
+	})!;
 	for (let i = 0z; i < len(query); i += 1) {
 		fmt::fprint(conn, " ")!;
 		shlex::quote(conn, query[i])!;
