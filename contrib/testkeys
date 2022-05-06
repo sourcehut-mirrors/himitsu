@@ -1,0 +1,4 @@
+#!/bin/sh
+hiq -a proto=web host=example.org user=ddevault password!=hunter12
+hiq -a proto=web host=sourcehut.org user=ddevault password!=hunter12
+hiq -a proto=web host=harelang.org user=ddevault password!=hunter12
