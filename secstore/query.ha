@@ -1,4 +1,4 @@
-use query;
+use himitsu::query;
 use uuid;
 
 export type iterator = struct {

@@ -1,7 +1,7 @@
 use fmt;
 use io;
-use os;
 use os::exec;
+use os;
 use secstore;
 
 type prompt_mode = enum {

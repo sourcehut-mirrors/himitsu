@@ -2,6 +2,7 @@ use bufio;
 use dirs;
 use fmt;
 use getopt;
+use himitsu::query;
 use io;
 use net::unix;
 use net;
@@ -10,7 +11,6 @@ use path;
 use shlex;
 use strings;
 use strio;
-use query;
 
 type flag = enum u8 {
 	ONE = 1 << 0,
