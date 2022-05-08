@@ -67,7 +67,7 @@ export fn parse_items(items: []str) (query | invalid) = {
 		};
 		key = strings::trim(key, '?', '!');
 
-		match (regex::find(keyre, key)!) {
+		match (regex::find(&keyre, key)!) {
 		case let group: []regex::matchgroup =>
 			// XXX: https://todo.sr.ht/~sircmpwn/hare/628
 			regex::freeall(alloc([group]));
