@@ -121,7 +121,7 @@ export fn main() void = {
 			};
 			write_item(&buf, resp.1, field)!;
 		case "error" =>
-			fmt::fatal("error: {}", resp.1);
+			fmt::fatal("error:", resp.1);
 		case "end" =>
 			free(line);
 			break;
