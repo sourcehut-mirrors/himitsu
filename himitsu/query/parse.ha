@@ -85,6 +85,7 @@ export fn parse_items(items: []str) (query | invalid) = {
 	return query;
 };
 
+// Frees resources associated with this query.
 export fn finish(q: *query) void = {
 	for (let i = 0z; i < len(q.items); i += 1) {
 		free(q.items[i].key);
