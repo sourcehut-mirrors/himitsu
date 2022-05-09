@@ -67,7 +67,8 @@ prompter should ask the user to provide their password, then write the password
 to stdout, followed by a newline.
 
 If the user has previously entered an incorrect password, the
-"incorrect-password" parameter will be written to stdin to indicate this.
+"incorrect-password" parameter will be written to stdin, followed by EOF.
+Otherwise, stdin will be closed immediately.
 
 Following the "unlock" operation and any of its parameters, an additional
 operation MAY be written to stdin. This indicates that the reason the keyring is
