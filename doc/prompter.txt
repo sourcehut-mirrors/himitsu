@@ -1,101 +1,174 @@
-TODO:
-- Convert me to a man page
-- Add means of prompting for the user to fill in an incomplete key
+			   Himitsu prompter protocol
 
-			       Prompter protocol
+The prompter is used to interactively prompt the user to provide information or
+to consent to a privileged operation. The prompter is an arbitrary command which
+is executed by the Himitsu daemon, and the two parties communicate over the
+prompter's stdin and stdout file descriptors.
 
-The prompter will be executed by himitsud when the user's input is required for
-an operation. Details about the desired behavior of the prompter will be written
-to its stdin in a line-oriented text format (with LF line endings). Each line
-begins with a operation or parameter name (e.g. "key"), followed by a
-whitespace-separated list of additional arguments, which the prompter should
-split into fields according to POSIX shell quoting rules.
+The protocol is a series of line-oriented (LF) commands and replies in UTF-8,
+where commands are sent to the prompter via stdin and the prompter sends replies
+back via stdout. Each command or reply begins with the name of the message (e.g.
+"unlock"), optionally followed by a space and additonal data in a format
+specific to each message type.
 
-The first line written to stdin determines the operating mode of the prompter,
-and subsequent lines provide additional parameters to the prompter. Following
-the last line, stdin is closed and the prompter should commence its work.
+				  Conventions
 
-The prompter should abort if it encounters an operating mode that it was not
-designed to accomodate, but should continue normally upon encountering other
-unknown parameters.
+In this document, examples of prompter sessions are indented. Commands from the
+daemon to the prompter are prefixed with "=> ", and replies from the prompter to
+the daemon are prefixed with "<= ".
 
-				  Exit status
+				   Handshake
 
-The exit status of the prompter is semantically meaningful.
+The first message the daemon sends is the version command, which identifies the
+protocol version in use by the daemon and requests the protocol version in use
+by the client. The version number follows the word "version" in the reply, and
+is a series of three integers separated by dots ('.'), indicating respectively
+the major, minor, and patch version of the protocol.
 
-	0	The user consented to the operation OR the operation was
-		completed successfully
+	=> version
+	<= version 1.0.0
+
+The protocol number uses semantic versioning to determine compatibility between
+different versions of the daemon and prompter. The daemon will determine at its
+discretion if this protocol version is suitable, and if so, proceed to issue
+additional commands; if not, it will close stdin and the prompter should exit
+with status code 1.
+
+The current protocol number is 0.0.0.
+
+			       Prompting process
+
+The process is as follows:
+
+1. The prompter is executed by the daemon
+2. The handshake is performed
+3. One or more "informative" commands are sent
+4. The "prompt" command is sent
+5. The prompter presents itself to the user and sends replies as appropriate
+6. The prompter exits with a meaningful status code
+
+The "informative" commands provide details, such as keys being requested, for
+the prompter to display to the user. Following this, the "prompt" command causes
+the interactive portion of this process to begin. During this process, the
+prompter may gather additional information from the user (such as their keyring
+password), but in all cases will determine if the user consents or does not
+consent to the operation being performed. After gathering any required
+information, the prompter shall exit with a status code indicating one of the
+following conditions:
+
+	0	The user consented to the operation
 	1 	User did not consent to the operation
 	2-126	Reserved for future use
 	127	An internal error occured with the prompter
 
-				Operating modes
+				   Key format
 
-	disclose <version>
+A Himitsu key is made up of one or more key/value pairs. Each pair is separated
+by one space ('\x20'). Each pair contains a key, which is a string matching the
+POSIX Extended Regular Expression /^[-_A-Za-z]+$/. Optionally, following the key
+may be a '!' character, indicating that the key stores a secret value, and '?',
+indicating that a value is optional.
 
-The disclose operation is used when an application has requested the ability to
-view the user's secret information. The application can, in theory, store the
-user's credentials for later use without their permission. The language the
-prompter uses to explain this to the user should reflect this fact.
+Following the key shall be an optional value, consisting of an '=' symbol to
+separate it from the key, followed by the value itself. The value may contain
+arbitrary printable UTF-8 characters, written according to shell quoting rules,
+such that a space may appear in the value if it is surrounded by quotes.
 
-Following the operation, one or more "key" parameters will be sent.
+				    Commands
 
-If the user consents to disclose their credentials, the prompter should exit
-with status code zero. Otherwise, the prompter should exit with a non-zero
-status code.
+key <key...>
 
-The current semantic version of this operation is 0.0.0. If the prompter does
-not support the version provided, it should exit with status code 127.
+The daemon may provide zero or more keys which are associated with the current
+operation via the "key" command. Following the command name shall be a key
+represented in the key format above.
 
-	agent <version>
+unlock
 
-The agent operation is used when an application has requested the use of the
-user's credentials via an agent. This allows the application to perform an
-authenticated action, such as establishing a secure connection, but does not
-disclose the user's credentials to the application: it only works once. The
-language the prompter uses to explain this to the user should reflect this fact.
+The daemon will send this command if the keyring needs to be unlocked to
+complete the current operation.
 
-Following the operation, one or more "key" parameters will be sent.
+correct-password
 
-The current semantic version of this operation is 0.0.0. If the prompter does
-not support the version provided, it should exit with status code 127.
+The password given in the "password" reply was correct.
 
-	unlock <version>
+incorrect-password
 
-The unlock operation is used when the secret store needs to be unlocked. The
-prompter should ask the user to provide their password, then write the password
-to stdout, followed by a newline.
+The password given in the "password" reply was incorrect, and the user should be
+asked to provide it again.
 
-If the user has previously entered an incorrect password, the
-"incorrect-password" parameter will be written to stdin, followed by EOF.
-Otherwise, stdin will be closed immediately.
+version
 
-Following the "unlock" operation and any of its parameters, an additional
-operation MAY be written to stdin. This indicates that the reason the keyring is
-being unlocked is to facilitate an authenticated operation. In this case, the
-prompter should present the UI for entering a password AND the UI for consenting
-to this operation.
+The daemon sends this command to request protocol version information from the
+client.
 
-The current semantic version of this operation is 0.0.0. If the prompter does
-not support the version provided, it should exit with status code 127.
+prompt <params...>
 
-				Parameter types
+The prompt command indicates that no further informative commands will follow,
+and the prompter should present itself to the user and begin sending replies
+according to their input. The provided parameters indicate which of several
+consequences will occur if the user consents, selected from the following list:
 
-	client-name <name...>
+- disclose: the user's encrypted keys will be disclosed to the client if they
+  consent to this operation
+- unlock: the user's key ring will be unlocked
 
-The client-name parameter is included when a client provides a name for itself
-to be presented to the user. Note that the client can submit any name it
-pleases; the prompter should be careful to present it as truth.
+				    Replies
 
-	key <query...>
+password <password...>
 
-The key parameter provides information about a key which is involved in an
-operation. The format of a key is a whitespace-delimited list of key/value
-pairs, delimited per shell quoting rules. Each key/value pair separates the key
-from the value with an '='. The value may be absent; in this case the '=' is
-omitted as well. The key may be suffixed with the '!' character to indicate that
-it is private, or a '?' character to indicate it is optional.
+The password reply is given in response to the "unlock" command after the user
+provides a suitable password. The password will be verified by the daemon, which
+may take some time - the prompter should display some kind of progress indicator
+while this is being done. Following this, the daemon will send either the
+"correct-password" or "incorrect-password" message to inform the prompter of the
+results. The password is appended to the reply string following "password " and
+may contain only printable UTF-8 characters.
 
-	incorrect-password
+version <major.minor.patch>
 
-See "unlock" under "Operating Modes" for details.
+The client replies to the prompter's request for version information with this
+reply as described in the "Handshake" section above.
+
+				    Examples
+
+Scenario 1: the keyring is locked, and the daemon wishes to unlock it.
+
+	=> version
+	<= version 0.0.0
+	=> unlock
+	=> prompt unlock
+	<= password hunter3
+	=> incorrect-password
+	<= password hunter2
+	=> correct-password
+	(daemon closes stdin)
+	(prompter exits with status code 0)
+
+Scenario 2: the keyring is unlocked and a client would like to view the user's
+secret keys.
+
+	=> version
+	<= version 0.0.0
+	=> key proto=web host=example.org user=jdoe password! comment?
+	=> key proto=web host=example.com user=jdoe password! comment?="business account"
+	=> prompt disclose 
+	(daemon closes stdin)
+
+The prompter should show the user these keys, explain that the secret keys
+(password, in this case) will be disclosed to a third-party application, and
+request their consent. If provided, it shall exit with status code 0; if not,
+status code 1.
+
+Scenario 3: the keyring is locked and a client would like to view the user's
+secret keys.
+
+	=> version
+	<= version 0.0.0
+	=> key proto=web host=example.org user=jdoe password! comment?
+	=> key proto=web host=example.com user=jdoe password! comment?="business account"
+	=> unlock
+	=> prompt disclose unlock
+	<= password hunter2
+	=> correct-password
+	(daemon closes stdin)
+	(prompter exits with status code 0)
