@@ -61,6 +61,8 @@ following conditions:
 	2-126	Reserved for future use
 	127	An internal error occured with the prompter
 
+The daemon will close stdin when it is done sending commands.
+
 				   Key format
 
 A Himitsu key is made up of one or more key/value pairs. Each pair is separated
@@ -86,10 +88,6 @@ unlock
 
 The daemon will send this command if the keyring needs to be unlocked to
 complete the current operation.
-
-correct-password
-
-The password given in the "password" reply was correct.
 
 incorrect-password
 
@@ -119,10 +117,10 @@ password <password...>
 The password reply is given in response to the "unlock" command after the user
 provides a suitable password. The password will be verified by the daemon, which
 may take some time - the prompter should display some kind of progress indicator
-while this is being done. Following this, the daemon will send either the
-"correct-password" or "incorrect-password" message to inform the prompter of the
-results. The password is appended to the reply string following "password " and
-may contain only printable UTF-8 characters.
+while this is being done. Following this, the daemon will either send the
+"incorrect-password" message, or will close stdin. The password is appended to
+the reply string following "password " and may contain only printable UTF-8
+characters.
 
 version <major.minor.patch>
 
