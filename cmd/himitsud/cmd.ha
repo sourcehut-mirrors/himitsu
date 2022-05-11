@@ -6,6 +6,7 @@ use getopt;
 use himitsu::query;
 use io;
 use os::exec;
+use prompt;
 use secstore;
 use shlex;
 use strings;
@@ -142,8 +143,9 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	for (let i = 0z; i < len(matches); i += 1) {
 		// TODO: Prompt for all matches at once
 		if (decrypt) {
-			const consent = prompt(serv.store,
-				matches[i], prompt_mode::DISCLOSE)?;
+			// TODO: Configurable prompter command
+			const consent = prompt::disclose("hiprompt-gtk",
+				serv.store, matches[i])?;
 			if (!consent) {
 				writefmt(client, "error User declined");
 				io::close(&buf)!;
