@@ -13,7 +13,7 @@ let keyre: regex::regex = regex::regex { ... };
 };
 
 @fini fn fini() void = {
-	regex::regex_finish(&keyre);
+	regex::finish(&keyre);
 };
 
 export type query = struct {
@@ -66,12 +66,7 @@ export fn parse_items(items: []str) (query | invalid) = {
 			optional = true;
 		};
 		key = strings::trim(key, '?', '!');
-
-		match (regex::find(&keyre, key)!) {
-		case let group: []regex::matchgroup =>
-			// XXX: https://todo.sr.ht/~sircmpwn/hare/628
-			regex::freeall(alloc([group]));
-		case void =>
+		if (!regex::test(&keyre, key)) {
 			return invalid;
 		};
 
