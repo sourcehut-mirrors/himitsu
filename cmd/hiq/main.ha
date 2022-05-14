@@ -1,5 +1,6 @@
 use bufio;
 use dirs;
+use errors;
 use fmt;
 use getopt;
 use himitsu::query;
@@ -85,8 +86,10 @@ export fn main() void = {
 	let conn = match (unix::connect(sockpath)) {
 	case let s: io::file =>
 		yield s;
+	case errors::noentry =>
+		fmt::fatal("error: himitsud connection failed (is it running?)");
 	case let e: net::error =>
-		fmt::fatal(net::strerror(e));
+		fmt::fatal("error:", net::strerror(e));
 	};
 	defer io::close(conn)!;
 
