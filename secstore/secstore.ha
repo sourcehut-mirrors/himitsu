@@ -149,8 +149,7 @@ export fn open(passphrase: []u8) (secstore | error) = {
 	const key = keystore::newkey(key[..32], "secstore")!;
 
 	path::set(&buf, dir, "index")!;
-	const index = os::open(path::string(&buf),
-		fs::flags::RDWR | fs::flags::CLOEXEC | fs::flags::NOCTTY)?;
+	const index = os::open(path::string(&buf), fs::flags::RDWR)?;
 
 	const store = secstore {
 		key = key,
