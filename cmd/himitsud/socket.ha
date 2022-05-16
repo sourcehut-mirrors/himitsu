@@ -30,7 +30,7 @@ type server = struct {
 
 fn bind(store: *secstore::secstore, signalfd: io::file) server = {
 	const statedir = dirs::state("himitsu");
-	os::mkdirs(statedir)!;
+	os::mkdirs(statedir, 0o755)!;
 
 	let buf = path::init();
 	path::set(&buf, statedir, "socket")!;
