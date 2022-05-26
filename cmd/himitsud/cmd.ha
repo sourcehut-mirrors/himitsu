@@ -5,6 +5,7 @@ use fs;
 use getopt;
 use himitsu::query;
 use io;
+use log;
 use os::exec;
 use prompt;
 use secstore;
@@ -32,6 +33,8 @@ fn strerror(err: cmderror) const str = {
 };
 
 fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
+	log::println(cmd);
+
 	const args = match (shlex::split(cmd)) {
 	case shlex::syntaxerr =>
 		writefmt(client, "error Invalid command syntax");
