@@ -33,8 +33,7 @@ fn strerror(err: cmderror) const str = {
 };
 
 fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
-	log::println(cmd);
-
+	// TODO: Better logging of client activity
 	const args = match (shlex::split(cmd)) {
 	case shlex::syntaxerr =>
 		writefmt(client, "error Invalid command syntax");
