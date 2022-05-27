@@ -53,6 +53,8 @@ export fn parse(in: io::handle) (query | invalid | io::error) = {
 	return parse_items(items);
 };
 
+// Parses a list of key/value pairs which has already been split with shlex (or
+// a shell, for example when parsing a query from argv).
 export fn parse_items(items: []str) (query | invalid) = {
 	// XXX: Should do something about the case where the user specifies both
 	// ? and !

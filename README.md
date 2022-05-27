@@ -2,10 +2,11 @@
 
 「パスワードは何？」「ひみつですよ！」
 
+**Notice: neither this project nor the underlying cryptograhic implementation
+have been independently audited. This project is a work in progress.**
+
 Himitsu is a secret storage system for Unix systems. It is suitable for storing
 passwords, private keys, and so on.
-
-WIP
 
 ## Installation
 
