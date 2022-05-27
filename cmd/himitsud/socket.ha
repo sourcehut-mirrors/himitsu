@@ -11,8 +11,8 @@ use os;
 use path;
 use secstore;
 use strings;
-use unix::poll;
 use unix::poll::{event};
+use unix::poll;
 use unix::signal;
 
 def CLIENT_MAXBUF: size = 16777216; // 16 MiB
@@ -35,7 +35,7 @@ fn bind(store: *secstore::secstore, signalfd: io::file) server = {
 	let buf = path::init();
 	path::set(&buf, statedir, "socket")!;
 	const sockpath = path::string(&buf);
-	const sock = match (unix::listen(sockpath)) {
+	const sock = match (unix::listen(sockpath, net::sockflags::NOCLOEXEC)) {
 	case let l: io::file =>
 		yield l;
 	case let err: net::error =>
