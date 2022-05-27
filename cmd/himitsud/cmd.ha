@@ -54,6 +54,8 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 		yield &exec_del;
 	case "query" =>
 		yield &exec_query;
+	case "quit" =>
+		yield &exec_quit;
 	case =>
 		writefmt(client, "error Unknown command");
 		return;
@@ -162,4 +164,12 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	fmt::fprintln(&buf, "end")?;
 
 	writebuf(client, bufio::buffer(&buf));
+};
+
+fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	if (!serv.daemonized) {
+		writefmt(client, "error Server is not damonized, use a service manager");
+		return;
+	};
+	serv.terminate = true;
 };

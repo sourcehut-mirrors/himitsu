@@ -20,15 +20,22 @@ def MAX_CLIENTS: size = 256;
 def POLLFD_RESERVED: size = 2;
 
 type server = struct {
+	store: *secstore::secstore,
 	sock: io::file,
 	signalfd: io::file,
 	pollfd: []poll::pollfd,
 	clients: []client,
-	disconnected: bool,
-	store: *secstore::secstore,
+	disconnected: bool, // XXX: Bit of a hack here
+
+	daemonized: bool,
+	terminate: bool,
 };
 
-fn bind(store: *secstore::secstore, signalfd: io::file) server = {
+fn bind(
+	store: *secstore::secstore,
+	signalfd: io::file,
+	daemonize: bool,
+) server = {
 	const statedir = dirs::state("himitsu");
 	os::mkdirs(statedir, 0o755)!;
 
@@ -58,6 +65,7 @@ fn bind(store: *secstore::secstore, signalfd: io::file) server = {
 		signalfd = signalfd,
 		pollfd = pollfd,
 		store = store,
+		daemonized = daemonize,
 		...
 	};
 };
@@ -79,6 +87,10 @@ fn shutdown(serv: *server) void = {
 };
 
 fn dispatch(serv: *server) bool = {
+	if (serv.terminate) {
+		return false;
+	};
+
 	match (poll::poll(serv.pollfd, poll::INDEF)) {
 	case uint =>
 		if (serv.pollfd[0].revents & event::POLLIN != 0) {
@@ -101,6 +113,7 @@ fn dispatch(serv: *server) bool = {
 	case let err: errors::error =>
 		log::fatal("poll:", errors::strerror(err));
 	};
+
 	return true;
 };
 

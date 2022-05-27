@@ -70,7 +70,7 @@ export fn main() void = {
 	const sigfd = signal::signalfd(signal::SIGINT, signal::SIGTERM)!;
 	defer io::close(sigfd)!;
 
-	const sock = bind(&store, sigfd);
+	const sock = bind(&store, sigfd, daemonize);
 
 	if (daemonize) {
 		match (exec::fork()) {

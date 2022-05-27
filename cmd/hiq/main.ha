@@ -22,6 +22,7 @@ type operation = enum uint {
 	QUERY,
 	ADD,
 	DEL,
+	QUIT,
 };
 
 fn write_item(
@@ -53,6 +54,7 @@ export fn main() void = {
 		('d', "decrypt private keys"),
 		('D', "delete matching keys"),
 		('F', "field", "select a field for output"),
+		('Q', "terminate the daemon (if started with -D)"),
 		"<query>",
 	];
 	const cmd = getopt::parse(os::args, usage...);
@@ -72,6 +74,8 @@ export fn main() void = {
 			op = operation::DEL;
 		case 'F' =>
 			field = cmd.opts[i].1;
+		case 'Q' =>
+			op = operation::QUIT;
 		};
 	};
 
@@ -100,6 +104,8 @@ export fn main() void = {
 		yield "add";
 	case operation::DEL =>
 		yield "del";
+	case operation::QUIT =>
+		yield "quit";
 	})!;
 	for (let i = 0z; i < len(query); i += 1) {
 		fmt::fprint(conn, " ")!;
@@ -127,6 +133,8 @@ export fn main() void = {
 			fmt::fatal("error:", resp.1);
 		case "end" =>
 			free(line);
+			break;
+		case =>
 			break;
 		};
 		free(line);
