@@ -16,10 +16,12 @@ let keyre: regex::regex = regex::regex { ... };
 	regex::finish(&keyre);
 };
 
+// A parsed Himitsu query.
 export type query = struct {
 	items: []pair,
 };
 
+// A key/value pair in a Himitsu key.
 export type pair = struct {
 	key: str,
 	value: str,
