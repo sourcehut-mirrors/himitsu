@@ -3,6 +3,7 @@ use dirs;
 use encoding::utf8;
 use errors;
 use fmt;
+use fs;
 use io;
 use log;
 use net::unix;
@@ -36,11 +37,15 @@ fn bind(
 	signalfd: io::file,
 	daemonize: bool,
 ) server = {
-	const statedir = dirs::state("himitsu");
-	os::mkdirs(statedir, 0o755)!;
+	const statedir = match (dirs::runtime()) {
+	case let err: fs::error =>
+		fmt::fatalf("Unable to initialize socket: {}", fs::strerror(err));
+	case let dir: str =>
+		yield dir;
+	};
 
 	let buf = path::init();
-	path::set(&buf, statedir, "socket")!;
+	path::set(&buf, statedir, "himitsu")!;
 	const sockpath = path::string(&buf);
 	const sock = match (unix::listen(sockpath, net::sockflags::NOCLOEXEC)) {
 	case let l: io::file =>

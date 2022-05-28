@@ -86,7 +86,8 @@ export fn main() void = {
 	};
 
 	let buf = path::init();
-	const sockpath = path::set(&buf, dirs::state("himitsu"), "socket")!;
+	// TODO: Bubble up dirs::runtime errors
+	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
 	let conn = match (unix::connect(sockpath)) {
 	case let s: io::file =>
 		yield s;

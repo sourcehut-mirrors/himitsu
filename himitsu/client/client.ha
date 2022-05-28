@@ -47,7 +47,8 @@ export fn strerror(err: error) const str = {
 // Connects to the Himitsu socket, returning the connection's file descriptor.
 export fn connect() (io::file | error) = {
 	let buf = path::init();
-	const sockpath = path::set(&buf, dirs::state("himitsu"), "socket")!;
+	// TODO: Bubble up dirs::runtime errors
+	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
 	return unix::connect(sockpath)?;
 };
 
