@@ -1,4 +1,5 @@
 #!/bin/sh
-export XDG_STATE_HOME=$PWD/.teststore
 export XDG_DATA_HOME=$PWD/.teststore
-mkdir -p $XDG_DATA_HOME
+export XDG_RUNTIME_DIR=$XDG_DATA_HOME/runtime
+mkdir -p $XDG_RUNTIME_DIR
+chmod 700 $XDG_RUNTIME_DIR
