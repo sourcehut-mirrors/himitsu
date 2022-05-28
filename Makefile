@@ -27,7 +27,9 @@ clean:
 	rm -f himitsud himitsu-init hiq
 
 install:
+	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
+	install -m644 himitsu/client/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	install -m644 himitsu/query/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
 
 uninstall:
