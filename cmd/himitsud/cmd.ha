@@ -14,7 +14,7 @@ use strings;
 use unix::poll::{event};
 
 type servererror = !(io::error | fs::error | errors::invalid | exec::error);
-type cmderror = !(query::invalid | servererror);
+type cmderror = !(query::invalid | prompt::error | ...servererror);
 
 fn strerror(err: cmderror) const str = {
 	match (err) {
@@ -24,6 +24,8 @@ fn strerror(err: cmderror) const str = {
 		return fs::strerror(err);
 	case let err: exec::error =>
 		return exec::strerror(err);
+	case let err: prompt::error =>
+		return prompt::strerror(err);
 	case query::invalid =>
 		return "Invalid query syntax";
 	case errors::invalid =>
@@ -143,20 +145,21 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		append(matches, item);
 	};
 
+	if (decrypt) {
+		// TODO: Configurable command
+		const prompter = prompt::newprompter("hiprompt-gtk-py")?;
+		for (let i = 0z; i < len(matches); i += 1) {
+			prompt::sendkey(&prompter, serv.store, matches[i])?;
+		};
+		prompt::prompt(&prompter, prompt::mode::DISCLOSE)?;
+		if (!prompt::wait(&prompter)?) {
+			writefmt(client, "error User declined");
+			return;
+		};
+	};
+
 	let buf = bufio::dynamic(io::mode::WRITE);
 	for (let i = 0z; i < len(matches); i += 1) {
-		// TODO: Prompt for all matches at once
-		if (decrypt) {
-			// TODO: Configurable prompter command
-			const consent = prompt::disclose("hiprompt-gtk",
-				serv.store, matches[i])?;
-			if (!consent) {
-				writefmt(client, "error User declined");
-				io::close(&buf)!;
-				return;
-			};
-		};
-
 		fmt::fprint(&buf, "key ")?;
 		secstore::write(serv.store, &buf, matches[i], decrypt)?;
 		io::write(&buf, ['\n'])?;

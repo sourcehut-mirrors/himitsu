@@ -108,7 +108,6 @@ consequences will occur if the user consents, selected from the following list:
 
 - disclose: the user's encrypted keys will be disclosed to the client if they
   consent to this operation
-- unlock: the user's key ring will be unlocked
 
 				    Replies
 
