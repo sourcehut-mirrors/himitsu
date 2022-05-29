@@ -12,7 +12,7 @@ use strings;
 use unix::tty;
 
 // XXX: Distros may want to modify the default config
-const conf: str = `[himitsu]
+const conf: str = `[himitsud]
 prompter=hiprompt-gtk-py`;
 
 export fn main() void = {
