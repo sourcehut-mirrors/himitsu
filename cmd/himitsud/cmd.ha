@@ -13,7 +13,7 @@ use shlex;
 use strings;
 use unix::poll::{event};
 
-type servererror = !(io::error | fs::error | errors::invalid | exec::error);
+type servererror = !(io::error | fs::error | exec::error | secstore::error);
 type cmderror = !(query::invalid | prompt::error | ...servererror);
 
 fn strerror(err: cmderror) const str = {
@@ -26,11 +26,10 @@ fn strerror(err: cmderror) const str = {
 		return exec::strerror(err);
 	case let err: prompt::error =>
 		return prompt::strerror(err);
+	case let err: secstore::error =>
+		return secstore::strerror(err);
 	case query::invalid =>
 		return "Invalid query syntax";
-	case errors::invalid =>
-		// TODO: Use a different type than errors::invalid
-		return "Keystore decryption failed";
 	};
 };
 
@@ -78,7 +77,12 @@ fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const q = query::parse_items(args[1..])?;
 	defer query::finish(&q);
 	// TODO: Prompt user to fill in incomplete keys
-	let entry = secstore::add(serv.store, &q);
+	let entry = match (secstore::add(serv.store, &q)) {
+	case secstore::locked =>
+		abort(); // TODO
+	case let entry: *secstore::entry =>
+		yield entry;
+	};
 	let buf = bufio::dynamic(io::mode::WRITE);
 	fmt::fprint(&buf, "key ")?;
 	secstore::write(serv.store, &buf, entry, false)?;
@@ -107,7 +111,7 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		io::write(&buf, ['\n'])?;
 	};
 
-	secstore::del(serv.store, &q);
+	secstore::del(serv.store, &q)?;
 
 	fmt::fprintln(&buf, "end")?;
 	writebuf(client, bufio::buffer(&buf));

@@ -53,16 +53,22 @@ export fn main() void = {
 	};
 	fmt::errorln()!;
 
-	const store = secstore::open(pass);
+	const store = match (secstore::open()) {
+	case let err: secstore::error =>
+		bytes::zero(pass);
+		fmt::fatal("Error opening secstore:", secstore::strerror(err));
+	case let store: secstore::secstore =>
+		yield store;
+	};
+	const err = secstore::unlock(&store, pass);
 	bytes::zero(pass);
 	free(pass);
 
-	const store = match (store) {
+	match (err) {
 	case let err: secstore::error =>
-		fmt::fatal("Error opening secstore:",
-			secstore::strerror(err));
-	case let store: secstore::secstore =>
-		yield store;
+		fmt::fatal("Error opening secstore:", secstore::strerror(err));
+	case void =>
+		yield;
 	};
 	defer secstore::close(&store);
 

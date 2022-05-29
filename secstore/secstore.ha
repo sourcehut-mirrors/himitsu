@@ -68,12 +68,26 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	};
 };
 
-// Opens the secstore using the given passphrase and returns a state object. The
-// caller should call [[close]] when they're done with it.
-export fn open(passphrase: []u8) (secstore | error) = {
+// Opens the secstore. The caller should call [[unlock]] to decrypt it, and
+// [[close]] when they're done with it.
+export fn open() (secstore | error) = {
 	const dir = strings::dup(dirs::data("himitsu"));
 	let buf = path::init();
-	path::set(&buf, dir, "key")!;
+	path::set(&buf, dir, "index")!;
+
+	const index = os::open(path::string(&buf), fs::flags::RDWR)?;
+	return secstore {
+		key = void,
+		dir = dir,
+		index = index,
+		entries = [],
+	};
+};
+
+// Unlocks the keystore using the given passphrase.
+export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
+	let buf = path::init();
+	path::set(&buf, store.dir, "key")!;
 
 	const input = os::open(path::string(&buf))?;
 	defer io::close(input)!;
@@ -146,37 +160,47 @@ export fn open(passphrase: []u8) (secstore | error) = {
 		return badpass;
 	};
 
-	const key = keystore::newkey(key[..32], "secstore")!;
-
-	path::set(&buf, dir, "index")!;
-	const index = os::open(path::string(&buf), fs::flags::RDWR)?;
-
-	const store = secstore {
-		key = key,
-		dir = dir,
-		index = index,
-		entries = [],
-	};
-	match (load_index(&store)) {
+	store.key = keystore::newkey(key[..32], "secstore")!;
+	match (load_index(store)) {
 	case void => yield;
 	case let err: io::error =>
 		return err;
 	case errors::invalid =>
 		return badstore;
 	};
-	return store;
+};
+
+// Locks the key store, unloading the decryption keys and evicting entries.
+export fn lock(store: *secstore) void = {
+	match (store.key) {
+	case let key: keystore::key =>
+		keystore::destroy(key);
+	case void =>
+		yield;
+	};
+	free_keys(store);
 };
 
 // Closes the secstore, freeing any associated resources.
 export fn close(store: *secstore) void = {
+	lock(store);
 	io::close(store.index)!;
-	keystore::destroy(store.key);
 	free(store.dir);
+};
+
+fn free_keys(store: *secstore) void = {
+	for (let i = 0z; i < len(store.entries); i += 1) {
+		entry_finish(&store.entries[i]);
+	};
 };
 
 // Adds an item to the keystore. The provided query must not have any missing
 // values.
-export fn add(store: *secstore, q: *query::query) *entry = {
+export fn add(store: *secstore, q: *query::query) (*entry | locked) = {
+	if (store.key is void) {
+		return locked;
+	};
+
 	// TODO: Better error handling
 	let pairs: []pair = [];
 	for (let i = 0z; i < len(q.items); i += 1) {
@@ -202,6 +226,8 @@ export fn add(store: *secstore, q: *query::query) *entry = {
 
 // Encrypts and stores a secret value, returning its assigned UUID.
 fn add_secret(store: *secstore, val: str) uuid::uuid = {
+	assert(store.key is keystore::key);
+
 	const id = uuid::generate();
 	const idstr = uuid::encodestr(id);
 
@@ -213,7 +239,7 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 
 	let key: [32]u8 = [0...];
 	defer bytes::zero(key);
-	keystore::read(store.key, key);
+	keystore::read(store.key as keystore::key, key);
 
 	let nonce: crypto::nonce = [0...];
 	random::buffer(nonce);
@@ -228,6 +254,8 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 
 // Encrypts and writes an entry to the index.
 fn add_index(store: *secstore, entry: *entry) void = {
+	assert(store.key is keystore::key);
+
 	let buf = bufio::dynamic(io::mode::WRITE);
 	defer io::close(&buf)!;
 
@@ -253,7 +281,7 @@ fn add_index(store: *secstore, entry: *entry) void = {
 
 	let key: [32]u8 = [0...];
 	defer bytes::zero(key);
-	keystore::read(store.key, key);
+	keystore::read(store.key as keystore::key, key);
 
 	let nonce: crypto::nonce = [0...];
 	random::buffer(nonce);
@@ -269,9 +297,11 @@ fn add_index(store: *secstore, entry: *entry) void = {
 
 // Decrypts and loads keystore entries from the index.
 fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
+	assert(store.key is keystore::key);
+
 	let key: [32]u8 = [0...];
 	defer bytes::zero(key);
-	keystore::read(store.key, key);
+	keystore::read(store.key as keystore::key, key);
 
 	for (true) {
 		const line = match (bufio::scanline(store.index)?) {

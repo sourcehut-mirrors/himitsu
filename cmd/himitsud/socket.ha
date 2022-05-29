@@ -85,7 +85,7 @@ fn shutdown(serv: *server) void = {
 	free(serv.pollfd);
 
 	let buf = path::init();
-	path::set(&buf, dirs::state("himitsu"), "socket")!;
+	path::set(&buf, dirs::runtime()!, "himitsu")!;
 	os::remove(path::string(&buf))!;
 
 	net::shutdown(serv.sock);

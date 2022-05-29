@@ -6,7 +6,12 @@ use strings;
 use uuid;
 
 // Deletes all keys from the secstore which match the given query.
-export fn del(store: *secstore, q: *query::query) void = {
+export fn del(store: *secstore, q: *query::query) (void | locked) = {
+	// TODO: TOCTU the keystore key to avoid expiry race
+	if (store.key is void) {
+		return locked;
+	};
+
 	// XXX: Should we bubble up errors from here? If we have an open
 	// secstore we presumably have access to it but if someone fucks about
 	// it could cause problems here.

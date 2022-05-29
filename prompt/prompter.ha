@@ -59,7 +59,7 @@ export fn sendkey(
 ) (void | error) = {
 	fmt::fprintf(prompt.stdin, "key ")?;
 	match (secstore::write(store, prompt.stdin, entry, false)) {
-	case errors::invalid =>
+	case secstore::badstore =>
 		abort(); // Did not request decryption
 	case let err: fs::error =>
 		return err;

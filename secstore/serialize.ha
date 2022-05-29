@@ -20,7 +20,11 @@ export fn write(
 	sink: io::handle,
 	ent: *entry,
 	private: bool,
-) (void | fs::error | io::error | errors::invalid) = {
+) (void | error) = {
+	if (store.key is void) {
+		return locked;
+	};
+
 	// TODO: https://todo.sr.ht/~sircmpwn/hare/619
 	for (let i = 0z; i < len(ent.pairs); i += 1) {
 		const pair = &ent.pairs[i];
@@ -51,7 +55,9 @@ fn write_private(
 	store: *secstore,
 	sink: io::handle,
 	id: uuid::uuid,
-) (void | fs::error | io::error | errors::invalid) = {
+) (void | error) = {
+	assert(store.key is keystore::key);
+
 	const idstr = uuid::encodestr(id);
 
 	let buf = path::init();
@@ -72,9 +78,16 @@ fn write_private(
 
 	let key: [32]u8 = [0...];
 	defer bytes::zero(key);
-	keystore::read(store.key, key);
+	keystore::read(store.key as keystore::key, key);
 
 	let box: crypto::box = (mac, nonce, ciphertext);
-	const plaintext = crypto::decrypt(&key, &box)?;
+	const plaintext = match (crypto::decrypt(&key, &box)) {
+	case errors::invalid =>
+		return badstore;
+	case let buf: []u8 =>
+		yield buf;
+	};
+	defer bytes::zero(plaintext);
+
 	io::writeall(sink, plaintext)?;
 };
