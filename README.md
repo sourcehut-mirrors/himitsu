@@ -19,7 +19,7 @@ $ make
 
 You also need a prompter. Try one of these:
 
-- [hiprompt-gtk](https://git.sr.ht/~sircmpwn/hiprompt-gtk)
+- [hiprompt-gtk-py](https://git.sr.ht/~sircmpwn/hiprompt-gtk-py)
 
 ## Usage
 
