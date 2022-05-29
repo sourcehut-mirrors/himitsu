@@ -1,11 +1,19 @@
 use bufio;
 use bytes;
+use dirs;
+use errors;
 use fmt;
+use fs;
 use io;
 use os;
+use path;
 use secstore;
 use strings;
 use unix::tty;
+
+// XXX: Distros may want to modify the default config
+const conf: str = `[himitsu]
+prompter=hiprompt-gtk-py`;
 
 export fn main() void = {
 	const tty = match (tty::open()) {
@@ -24,6 +32,7 @@ export fn main() void = {
 	const tty = &bufio::buffered(tty, rbuf, wbuf);
 	defer io::close(tty)!;
 
+	// TODO: Prompt before overwriting existing secstore
 	fmt::errorln("Initializing a new himitsu secstore.")!;
 	fmt::error("Please enter a passphrase: ")!;
 	const pass1 = match (bufio::scanline(tty)!) {
@@ -58,4 +67,37 @@ export fn main() void = {
 	};
 
 	fmt::println("Successfully initialized new secstore.")!;
+};
+
+fn writeconf() void = {
+	let buf = path::init();
+	const confdir = dirs::config("himitsu");
+	match (os::mkdirs(confdir, 0o755)) {
+	case let err: fs::error =>
+		fmt::fatal("Error creating config directory:", fs::strerror(err));
+	case void =>
+		yield;
+	};
+
+	path::set(&buf, confdir, "config.ini")!;
+	const confpath = path::string(&buf);
+	const file = match (os::create(confpath, 0o644, fs::flags::EXCL)) {
+	case let file: io::file =>
+		yield file;
+	case errors::exists =>
+		fmt::println("Config file already exists (not overwriting it)")!;
+		return;
+	case let err: fs::error =>
+		fmt::fatal("Error creating config file:", fs::strerror(err));
+	};
+	defer io::close(file)!;
+
+	match (io::writeall(file, strings::toutf8(conf))) {
+	case let err: io::error =>
+		fmt::fatal("Error writing config file:", io::strerror(err));
+	case size =>
+		yield;
+	};
+
+	fmt::println("Wrote config file to {}", confpath)!;
 };
