@@ -89,7 +89,7 @@ export fn main() void = {
 	// TODO: Bubble up dirs::runtime errors
 	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
 	let conn = match (unix::connect(sockpath)) {
-	case let s: io::file =>
+	case let s: net::socket =>
 		yield s;
 	case errors::noentry =>
 		fmt::fatal("error: himitsud connection failed (is it running?)");

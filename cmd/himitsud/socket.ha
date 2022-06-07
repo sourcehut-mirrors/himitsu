@@ -22,7 +22,7 @@ def POLLFD_RESERVED: size = 2;
 
 type server = struct {
 	store: *secstore::secstore,
-	sock: io::file,
+	sock: net::socket,
 	signalfd: io::file,
 	pollfd: []poll::pollfd,
 	clients: []client,
@@ -48,7 +48,7 @@ fn bind(
 	path::set(&buf, statedir, "himitsu")!;
 	const sockpath = path::string(&buf);
 	const sock = match (unix::listen(sockpath, net::sockflags::NOCLOEXEC)) {
-	case let l: io::file =>
+	case let l: net::socket =>
 		yield l;
 	case let err: net::error =>
 		log::fatal(net::strerror(err));
@@ -88,7 +88,7 @@ fn shutdown(serv: *server) void = {
 	path::set(&buf, dirs::runtime()!, "himitsu")!;
 	os::remove(path::string(&buf))!;
 
-	net::shutdown(serv.sock);
+	net::close(serv.sock)!;
 };
 
 fn dispatch(serv: *server) bool = {
@@ -125,7 +125,7 @@ fn dispatch(serv: *server) bool = {
 fn accept(serv: *server) void = {
 	// TODO: O_NONBLOCK
 	const sock = match (net::accept(serv.sock)) {
-	case let sock: io::file =>
+	case let sock: net::socket =>
 		yield sock;
 	case let err: net::error =>
 		log::fatal(net::strerror(err));

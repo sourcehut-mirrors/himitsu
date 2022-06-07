@@ -60,8 +60,7 @@ export fn parse_items(items: []str) (query | invalid) = {
 	// ? and !
 	let query = query { ... };
 	for (let i = 0z; i < len(items); i += 1) {
-		const parts = strings::cut(items[i], "=");
-		let key = parts.0, value = parts.1;
+		const (key, value) = strings::cut(items[i], "=");
 		let optional = false, private = false;
 		if (strings::hassuffix(key, "!")) {
 			private = true;
