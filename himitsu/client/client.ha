@@ -45,7 +45,7 @@ export fn strerror(err: error) const str = {
 };
 
 // Connects to the Himitsu socket, returning the connection's file descriptor.
-export fn connect() (io::file | error) = {
+export fn connect() (net::socket | error) = {
 	let buf = path::init();
 	// TODO: Bubble up dirs::runtime errors
 	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
@@ -53,7 +53,7 @@ export fn connect() (io::file | error) = {
 };
 
 export type keyiter = struct {
-	conn: io::file,
+	conn: net::socket,
 	buf: strio::stream,
 };
 
@@ -61,7 +61,7 @@ export type keyiter = struct {
 // iterates through each key returned. The user must call [[next]] to retrieve
 // the next key until all keys are returned, or risk a memory leak.
 export fn query(
-	conn: io::file,
+	conn: net::socket,
 	op: operation,
 	q: *query::query,
 	flags: flags,
