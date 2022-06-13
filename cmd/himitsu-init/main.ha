@@ -67,6 +67,7 @@ export fn main() void = {
 	};
 
 	fmt::println("Successfully initialized new secstore.")!;
+	writeconf();
 };
 
 fn writeconf() void = {
@@ -81,7 +82,8 @@ fn writeconf() void = {
 
 	path::set(&buf, confdir, "config.ini")!;
 	const confpath = path::string(&buf);
-	const file = match (os::create(confpath, 0o644, fs::flags::EXCL)) {
+	const file = match (os::create(confpath, 0o644, fs::flags::WRONLY,
+		fs::flags::EXCL)) {
 	case let file: io::file =>
 		yield file;
 	case errors::exists =>
@@ -99,5 +101,5 @@ fn writeconf() void = {
 		yield;
 	};
 
-	fmt::println("Wrote config file to {}", confpath)!;
+	fmt::println("Wrote config file to", confpath)!;
 };
