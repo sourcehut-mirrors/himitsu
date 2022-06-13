@@ -108,6 +108,8 @@ consequences will occur if the user consents, selected from the following list:
 
 - disclose: the user's encrypted keys will be disclosed to the client if they
   consent to this operation
+- delete: the user's keys will be deleted from the store if they consent to this
+  operation
 
 				    Replies
 

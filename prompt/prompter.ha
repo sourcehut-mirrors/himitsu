@@ -17,6 +17,7 @@ export type prompter = struct {
 // Prompter operation mode
 export type mode = enum {
 	DISCLOSE,
+	DELETE,
 };
 
 // Starts a new prompter session.
@@ -76,6 +77,8 @@ export fn prompt(prompt: *prompter, mode: mode) (void | io::error) = {
 	fmt::fprintfln(prompt.stdin, "prompt {}", switch (mode) {
 	case mode::DISCLOSE =>
 		yield "disclose";
+	case mode::DELETE =>
+		yield "delete";
 	})?;
 	io::close(prompt.stdin)?;
 	io::close(prompt.stdout)?;

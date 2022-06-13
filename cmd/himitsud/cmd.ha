@@ -96,7 +96,6 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 
 	let buf = bufio::dynamic(io::mode::WRITE);
 
-	// TODO: Prompt for consent
 	const iter = secstore::query(serv.store, &q);
 	let matches: []*secstore::entry = [];
 	for (true) {
@@ -109,9 +108,23 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		fmt::fprint(&buf, "key ")?;
 		secstore::write(serv.store, &buf, item, false)?;
 		io::write(&buf, ['\n'])?;
+		append(matches, item);
 	};
 
-	secstore::del(serv.store, &q)?;
+	if (len(matches) > 0) {
+		const prompter = prompt::newprompter(serv.conf.prompter[0],
+			serv.conf.prompter[1..])?;
+		for (let i = 0z; i < len(matches); i += 1) {
+			prompt::sendkey(&prompter, serv.store, matches[i])?;
+		};
+		prompt::prompt(&prompter, prompt::mode::DELETE)?;
+		if (!prompt::wait(&prompter)?) {
+			writefmt(client, "error User declined");
+			return;
+		};
+
+		secstore::del(serv.store, &q)?;
+	};
 
 	fmt::fprintln(&buf, "end")?;
 	writebuf(client, bufio::buffer(&buf));
