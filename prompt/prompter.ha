@@ -21,8 +21,8 @@ export type mode = enum {
 };
 
 // Starts a new prompter session.
-export fn newprompter(command: str) (prompter | error) = {
-	const cmd = exec::cmd(command)?;
+export fn newprompter(command: str, args: []str) (prompter | error) = {
+	const cmd = exec::cmd(command, args...)?;
 	const stdin = exec::pipe();
 	const stdout = exec::pipe();
 	exec::addfile(&cmd, os::stdin_file, stdin.0);

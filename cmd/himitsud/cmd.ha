@@ -163,8 +163,8 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 
 	if (len(matches) > 0 && decrypt) {
-		// TODO: Configurable command
-		const prompter = prompt::newprompter("hiprompt-gtk-py")?;
+		const prompter = prompt::newprompter(serv.conf.prompter[0],
+			serv.conf.prompter[1..])?;
 		for (let i = 0z; i < len(matches); i += 1) {
 			prompt::sendkey(&prompter, serv.store, matches[i])?;
 		};

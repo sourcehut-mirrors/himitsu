@@ -1,5 +1,6 @@
 use bufio;
 use bytes;
+use config;
 use fmt;
 use getopt;
 use io;
@@ -76,7 +77,15 @@ export fn main() void = {
 	const sigfd = signal::signalfd(signal::SIGINT, signal::SIGTERM)!;
 	defer io::close(sigfd)!;
 
-	const sock = bind(&store, sigfd, daemonize);
+	const conf = match (config::load()) {
+	case let conf: config::config =>
+		yield conf;
+	case let err: config::error =>
+		fmt::fatal("Failed to load config:", config::strerror(err));
+	};
+	defer config::finish(&conf);
+
+	const sock = bind(&store, &conf, sigfd, daemonize);
 
 	if (daemonize) {
 		match (exec::fork()) {

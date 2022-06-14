@@ -1,4 +1,5 @@
 use bytes;
+use config;
 use dirs;
 use encoding::utf8;
 use errors;
@@ -22,6 +23,7 @@ def POLLFD_RESERVED: size = 2;
 
 type server = struct {
 	store: *secstore::secstore,
+	conf: *config::config,
 	sock: net::socket,
 	signalfd: io::file,
 	pollfd: []poll::pollfd,
@@ -34,6 +36,7 @@ type server = struct {
 
 fn bind(
 	store: *secstore::secstore,
+	conf: *config::config,
 	signalfd: io::file,
 	daemonize: bool,
 ) server = {
@@ -67,6 +70,7 @@ fn bind(
 
 	return server {
 		sock = sock,
+		conf = conf,
 		signalfd = signalfd,
 		pollfd = pollfd,
 		store = store,
