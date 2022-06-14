@@ -29,6 +29,9 @@ fn disconnect(c: *client) void = {
 	let i = (c: uintptr - serv.clients: *[*]client: uintptr): size / size(client);
 	delete(serv.clients[i]);
 	delete(serv.pollfd[i + POLLFD_RESERVED]);
+	for (i < len(serv.clients); i += 1) {
+		serv.clients[i].pollfd = &serv.pollfd[i];
+	};
 
 	serv.disconnected = true;
 };
