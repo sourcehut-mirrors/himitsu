@@ -84,15 +84,10 @@ The daemon may provide zero or more keys which are associated with the current
 operation via the "key" command. Following the command name shall be a key
 represented in the key format above.
 
-unlock
+password <correct|incorrect>
 
-The daemon will send this command if the keyring needs to be unlocked to
-complete the current operation.
-
-incorrect-password
-
-The password given in the "password" reply was incorrect, and the user should be
-asked to provide it again.
+Provides feedback on the user's password attempt. If "incorrect", the prompter
+should ask the user to retry.
 
 version
 
@@ -110,6 +105,37 @@ consequences will occur if the user consents, selected from the following list:
   consent to this operation
 - delete: the user's keys will be deleted from the store if they consent to this
   operation
+
+unlock
+
+The daemon will send this command when the user must unlock the keyring before
+proceeding. The keyring may be in one of three states:
+
+- hard locked: all key/value pairs are encrypted
+- soft locked: only secret values are encrypted
+- unlocked: the keyring is fully unlocked
+
+The keyring is hard locked on startup. In this state, the user cannot perform
+any queries before entering their password. If the prompter receives an "unlock"
+command before any "key" or "prompt" commands are sent, the keyring is in this
+state. The prompter should present the unlock UI and send "password" commands
+until the daemon replies with "password correct". Following this, the keyring
+will enter the unlocked state. If no other operations are required, stdin will
+be closed after "password correct" is sent. However, if a query is pending, the
+daemon will continue normally, sending "key" commands and a "prompt" command to
+complete the desired operation.
+
+The soft locked mode is entered after the user's configured keyring timeout
+expires. The encryption keys are unloaded from RAM, but the decrypted key/value
+pairs are kept. Queries which do not request decryption may proceed normally in
+this state. However, if decryption of secret values is requested, the keyring
+must be unlocked first. In this state, the daemon will send one or more "key"
+commands, followed by the "unlock" command, followed by the "prompt" command.
+The daemon may choose to implement a different unlocking UI in this mode, for
+instance to allow the user to both unlock and consent in a single UI action.
+
+In either situation, if the user declines to unlock the keyring, the prompter
+should exit with status code 1.
 
 				    Replies
 
