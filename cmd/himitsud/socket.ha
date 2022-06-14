@@ -177,6 +177,9 @@ fn client_readable(serv: *server, client: *client) void = {
 	const z = match (io::read(client.sock, buf)) {
 	case let z: size =>
 		yield z;
+	case io::EOF =>
+		disconnect(client);
+		return;
 	case let err: io::error =>
 		disconnect(client);
 		return;
