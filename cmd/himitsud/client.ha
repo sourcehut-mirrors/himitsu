@@ -30,7 +30,7 @@ fn disconnect(c: *client) void = {
 	delete(serv.clients[i]);
 	delete(serv.pollfd[i + POLLFD_RESERVED]);
 	for (i < len(serv.clients); i += 1) {
-		serv.clients[i].pollfd = &serv.pollfd[i];
+		serv.clients[i].pollfd = &serv.pollfd[i + POLLFD_RESERVED];
 	};
 
 	serv.disconnected = true;
