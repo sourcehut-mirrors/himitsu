@@ -56,9 +56,16 @@ install:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
+	mkdir -p $(DESTDIR)$(MANDIR)/man1
+	mkdir -p $(DESTDIR)$(MANDIR)/man5
+	mkdir -p $(DESTDIR)$(MANDIR)/man7
 	install -m755 himitsud himitsu-init hiq $(DESTDIR)$(PREFIX)/bin
 	install -m644 himitsu/client/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	install -m644 himitsu/query/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
+	install -m644 himitsud.1 $(DESTDIR)$(MANDIR)/man1/himitsud.1
+	install -m644 himitsu-init.1 $(DESTDIR)$(MANDIR)/man1/himitsu-init.1
+	install -m644 hiq.1 $(DESTDIR)$(MANDIR)/man1/hiq.1
+	install -m644 himitsu.7 $(DESTDIR)$(MANDIR)/man7/himitsu.7
 
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/himitsud \
