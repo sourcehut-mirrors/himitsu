@@ -12,6 +12,7 @@ use path;
 use shlex;
 use strings;
 use strio;
+use unix::tty;
 
 type flag = enum uint {
 	ONE = 1 << 0,
@@ -79,12 +80,6 @@ export fn main() void = {
 		};
 	};
 
-	let query = alloc(cmd.args...);
-	defer free(query);
-	if (flags & flag::DECRYPT != 0) {
-		insert(query[0], "-d");
-	};
-
 	let buf = path::init();
 	// TODO: Bubble up dirs::runtime errors
 	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
@@ -98,6 +93,46 @@ export fn main() void = {
 	};
 	defer io::close(conn)!;
 
+	if (op == operation::ADD && len(cmd.args) == 0) {
+		if (tty::isatty(os::stderr) && tty::isatty(os::stdin_file)) {
+			fmt::errorln("Enter new keys, one per line, then press ^d:")!;
+		};
+		for (true) {
+			match (bufio::scanline(os::stdin)!) {
+			case io::EOF => break;
+			case let line: []u8 =>
+				// NB. Can't defer free(line), causes a
+				// use-after-free in fmt::fatal
+				const line = strings::fromutf8(line);
+				const query = match (shlex::split(line)) {
+				case let q: []str =>
+					yield q;
+				case =>
+					fmt::fatal("Invalid query:", line);
+				};
+				defer strings::freeall(query);
+				free(line);
+
+				send(conn, operation::ADD, flags, field, query);
+			};
+		};
+	} else {
+		let query = alloc(cmd.args...);
+		defer free(query);
+		if (flags & flag::DECRYPT != 0) {
+			insert(query[0], "-d");
+		};
+		send(conn, op, flags, field, query);
+	};
+};
+
+fn send(
+	conn: io::file,
+	op: operation,
+	flags: flag,
+	field: str,
+	query: []str,
+) void = {
 	fmt::fprint(conn, switch (op) {
 	case operation::QUERY =>
 		yield "query";
