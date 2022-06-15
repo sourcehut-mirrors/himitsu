@@ -62,6 +62,7 @@ export fn create(passphrase: []u8) (secstore | error) = {
 
 	return secstore {
 		key = key,
+		state = state::UNLOCKED,
 		dir = dir,
 		index = index,
 		entries = [],
@@ -78,6 +79,7 @@ export fn open() (secstore | error) = {
 	const index = os::open(path::string(&buf), fs::flags::RDWR)?;
 	return secstore {
 		key = void,
+		state = state::HARD_LOCKED,
 		dir = dir,
 		index = index,
 		entries = [],
@@ -161,6 +163,7 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	};
 
 	store.key = keystore::newkey(key[..32], "secstore")!;
+	store.state = state::UNLOCKED;
 	match (load_index(store)) {
 	case void => yield;
 	case let err: io::error =>
@@ -170,20 +173,22 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	};
 };
 
-// Locks the key store, unloading the decryption keys and evicting entries.
+// Locks the key store, unloading the decryption keys.
 export fn lock(store: *secstore) void = {
 	match (store.key) {
 	case let key: keystore::key =>
 		keystore::destroy(key);
+		store.key = void;
 	case void =>
 		yield;
 	};
-	free_keys(store);
+	store.state = state::SOFT_LOCKED;
 };
 
 // Closes the secstore, freeing any associated resources.
 export fn close(store: *secstore) void = {
 	lock(store);
+	free_keys(store);
 	io::close(store.index)!;
 	free(store.dir);
 };
@@ -197,7 +202,7 @@ fn free_keys(store: *secstore) void = {
 // Adds an item to the keystore. The provided query must not have any missing
 // values.
 export fn add(store: *secstore, q: *query::query) (*entry | locked) = {
-	if (store.key is void) {
+	if (store.state != state::UNLOCKED) {
 		return locked;
 	};
 

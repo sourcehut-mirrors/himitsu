@@ -74,15 +74,21 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 };
 
 fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	if (serv.store.state != secstore::state::UNLOCKED) {
+		const prompter = prompt::newprompter(serv.conf.prompter[0],
+			serv.conf.prompter[1..])?;
+		prompt::unlock(&prompter)?;
+		if (!prompt::wait_unlock(&prompter, serv.store)?) {
+			writefmt(client, "error Failed to unlock");
+			return;
+		};
+		prompt::close(&prompter)?;
+	};
+
 	const q = query::parse_items(args[1..])?;
 	defer query::finish(&q);
 	// TODO: Prompt user to fill in incomplete keys
-	let entry = match (secstore::add(serv.store, &q)) {
-	case secstore::locked =>
-		abort(); // TODO
-	case let entry: *secstore::entry =>
-		yield entry;
-	};
+	let entry = secstore::add(serv.store, &q)!;
 	let buf = bufio::dynamic(io::mode::WRITE);
 	fmt::fprint(&buf, "key ")?;
 	secstore::write(serv.store, &buf, entry, false)?;
@@ -95,6 +101,17 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	defer query::finish(&q);
 
 	let buf = bufio::dynamic(io::mode::WRITE);
+
+	let prompter: (prompt::prompter | void) = void;
+	if (serv.store.state != secstore::state::UNLOCKED) {
+		const new = prompt::newprompter(serv.conf.prompter[0],
+			serv.conf.prompter[1..])?;
+		prompt::unlock(&new)?;
+		if (!prompt::wait_unlock(&new, serv.store)?) {
+			writefmt(client, "error Failed to unlock");
+			return;
+		};
+	};
 
 	const iter = secstore::query(serv.store, &q);
 	let matches: []*secstore::entry = [];
@@ -112,8 +129,13 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 
 	if (len(matches) > 0) {
-		const prompter = prompt::newprompter(serv.conf.prompter[0],
-			serv.conf.prompter[1..])?;
+		const prompter = match (prompter) {
+		case let p: prompt::prompter =>
+			yield p;
+		case void =>
+			yield prompt::newprompter(serv.conf.prompter[0],
+				serv.conf.prompter[1..])?;
+		};
 		for (let i = 0z; i < len(matches); i += 1) {
 			prompt::sendkey(&prompter, serv.store, matches[i])?;
 		};
@@ -123,7 +145,13 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 			return;
 		};
 
-		secstore::del(serv.store, &q)?;
+		secstore::del(serv.store, &q)!;
+	} else {
+		match (prompter) {
+		case let p: prompt::prompter =>
+			prompt::close(&p)?;
+		case void => yield;
+		};
 	};
 
 	fmt::fprintln(&buf, "end")?;
@@ -147,6 +175,21 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		};
 	};
 
+	let prompter: (prompt::prompter | void) = void;
+	if (serv.store.state == secstore::state::HARD_LOCKED) {
+		const new = prompt::newprompter(serv.conf.prompter[0],
+			serv.conf.prompter[1..])?;
+		prompt::unlock(&new)?;
+		if (!prompt::wait_unlock(&new, serv.store)?) {
+			writefmt(client, "error Failed to unlock");
+			return;
+		};
+		if (!decrypt) {
+			prompt::close(&new)?;
+		};
+		prompter = new;
+	};
+
 	const q = query::parse_items(cmd.args)?;
 	defer query::finish(&q);
 
@@ -163,12 +206,26 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 
 	if (len(matches) > 0 && decrypt) {
-		const prompter = prompt::newprompter(serv.conf.prompter[0],
-			serv.conf.prompter[1..])?;
+		const prompter = match (prompter) {
+		case let p: prompt::prompter =>
+			yield p;
+		case void =>
+			yield prompt::newprompter(serv.conf.prompter[0],
+				serv.conf.prompter[1..])?;
+		};
 		for (let i = 0z; i < len(matches); i += 1) {
 			prompt::sendkey(&prompter, serv.store, matches[i])?;
 		};
+		if (serv.store.state == secstore::state::SOFT_LOCKED) {
+			prompt::unlock(&prompter)?;
+		};
 		prompt::prompt(&prompter, prompt::mode::DISCLOSE)?;
+		if (serv.store.state == secstore::state::SOFT_LOCKED) {
+			if (!prompt::wait_unlock(&prompter, serv.store)?) {
+				writefmt(client, "error Failed to unlock");
+				return;
+			};
+		};
 		if (!prompt::wait(&prompter)?) {
 			writefmt(client, "error User declined");
 			return;

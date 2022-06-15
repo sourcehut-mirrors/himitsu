@@ -21,7 +21,7 @@ export fn write(
 	ent: *entry,
 	private: bool,
 ) (void | error) = {
-	if (store.key is void) {
+	if (private && store.state != state::UNLOCKED) {
 		return locked;
 	};
 

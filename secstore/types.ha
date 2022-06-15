@@ -4,8 +4,20 @@ use fs;
 use io;
 use uuid;
 
+export type state = enum {
+	// The store is fully unlocked
+	UNLOCKED,
+
+	// Partially locked - only secret values are encrypted
+	SOFT_LOCKED,
+
+	// Fully locked - all key/value entries are encrypted
+	HARD_LOCKED,
+};
+
 export type secstore = struct {
 	key: (keystore::key | void),
+	state: state,
 	dir: str,
 	index: io::handle,
 	// TODO: Consider adding hash table or btree or something. Might be fun

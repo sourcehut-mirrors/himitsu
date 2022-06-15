@@ -1,3 +1,4 @@
+use bytes;
 use bufio;
 use errors;
 use fmt;
@@ -72,6 +73,11 @@ export fn sendkey(
 	fmt::fprintln(prompt.stdin)?;
 };
 
+// Sends an unlock request to the prompter.
+export fn unlock(prompt: *prompter) (void | error) = {
+	fmt::fprintln(prompt.stdin, "unlock")?;
+};
+
 // Sends a "prompt" command to the prompter with the given operating mode.
 export fn prompt(prompt: *prompter, mode: mode) (void | io::error) = {
 	fmt::fprintfln(prompt.stdin, "prompt {}", switch (mode) {
@@ -80,13 +86,45 @@ export fn prompt(prompt: *prompter, mode: mode) (void | io::error) = {
 	case mode::DELETE =>
 		yield "delete";
 	})?;
-	io::close(prompt.stdin)?;
-	io::close(prompt.stdout)?;
+};
+
+// Waits for a password from the prompter and unlocks the store.
+export fn wait_unlock(
+	prompt: *prompter,
+	store: *secstore::secstore,
+) (bool | error) = {
+	for (true) match (bufio::scanline(prompt.stdout)?) {
+	case io::EOF =>
+		break;
+	case let buf: []u8 =>
+		defer {
+			bytes::zero(buf);
+			free(buf);
+		};
+		const string = strings::fromutf8_unsafe(buf);
+
+		const (cmd, pass) = strings::cut(string, " ");
+		if (cmd != "password") {
+			return protoerror;
+		};
+		match (secstore::unlock(store, strings::toutf8(pass))) {
+		case void =>
+			fmt::fprintln(prompt.stdin, "password correct")?;
+			return true;
+		case secstore::badpass =>
+			fmt::fprintln(prompt.stdin, "password incorrect")?;
+		case let err: secstore::error =>
+			abort("Unexpected secstore error");
+		};
+	};
+	return false;
 };
 
 // Waits for the prompter to complete and returns true if the user consented to
 // the operation, or false otherwise.
 export fn wait(prompt: *prompter) (bool | error) = {
+	close(prompt)?;
+
 	const res = exec::wait(&prompt.proc)?;
 	match (exec::check(&res)) {
 	case void =>
@@ -106,4 +144,10 @@ export fn wait(prompt: *prompter) (bool | error) = {
 			};
 		};
 	};
+};
+
+// Closes standard input and standard output of a prompter.
+export fn close(prompt: *prompter) (void | error) = {
+	io::close(prompt.stdin)?;
+	io::close(prompt.stdout)?;
 };
