@@ -2,6 +2,7 @@
 .SUFFIXES:
 HARE=hare
 HAREFLAGS=
+SCDOC=scdoc
 
 DESTDIR=
 PREFIX=/usr/local
@@ -9,7 +10,7 @@ SRCDIR=$(PREFIX)/src
 HARESRCDIR=$(SRCDIR)/hare
 THIRDPARTYDIR=$(HARESRCDIR)/third-party
 
-all: himitsud himitsu-init hiq
+all: himitsud himitsu-init hiq docs
 
 himitsud:
 	hare build -o $@ cmd/$@/
@@ -22,6 +23,31 @@ hiq:
 
 check:
 	hare test
+
+DOCS=\
+     himitsu.7 \
+     himitsud.1 \
+     himitsu-init.1 \
+     hiq.1
+
+docs: $(DOCS)
+
+himitsu.7: docs/himitsu.7.scd
+	$(SCDOC) <$< >$@
+
+himitsud.1: docs/himitsud.1.scd
+	$(SCDOC) <$< >$@
+
+himitsu-init.1: docs/himitsu-init.1.scd
+	$(SCDOC) <$< >$@
+
+hiq.1: docs/hiq.1.scd
+	$(SCDOC) <$< >$@
+
+# TODO:
+# himitsu-ipc(5)
+# himitsu-prompter(5)
+# himitsu.ini(5)
 
 clean:
 	rm -f himitsud himitsu-init hiq
@@ -40,4 +66,4 @@ uninstall:
 	      $(DESTDIR)$(PREFIX)/bin/hiq
 	rm -rf $(DESTDIR)$(THIRDPARTYDIR)/himitsu
 
-.PHONY: all himitsud himitsu-init hiq check clean install uninstall
+.PHONY: all himitsud himitsu-init hiq check clean install uninstall docs

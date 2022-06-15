@@ -1,0 +1,94 @@
+hiq(1)
+
+# NAME
+
+*hiq* - Query the *himitsu*(7) key store
+
+# SYNOPSIS
+
+*hiq* [-1adDQ] [-F _field_] _query_...
+
+# DESCRIPTION
+
+*hiq* will query the Himitsu key store for keys matching the given _query_. For
+details on the query format, consult *himitsu*(7) under *QUERY SYNTAX*. Matching
+keys will be printed to the standard output in the format described by
+*himitsu*(7) under *KEY FORMAT*.
+
+The user is not required to use redundant shell quoting to escape keys or values
+with special characters; the command line arguments are interpreted as if they
+have already been quoted properly.
+
+## OPTIONS
+
+*-1*
+	Causes *hiq* to exit with a non-zero status code if greater than one key
+	matched the given query.
+
+*-a*
+	Adds a new key to the key store. The query must be fully specified, such
+	that each key has a value and there are no optional keys. If no command
+	line arguments are provided, new keys are read from the standard input.
+	Using the standard input is recommended when adding keys from an
+	interactive shell, to prevent secret values from being stored in your
+	shell history.
+
+*-d*
+	Request decryption of secret keys.
+
+*-D*
+	Delete all keys matching the query. The user is prompted to consent
+	before this operation is committed.
+
+*-F* _field_
+	Select a specific field to print. By default, the full key is printed in
+	the format described by *KEY FORMAT* in *himitsu*(7).
+
+*-Q*
+	Terminate the Himitsu daemon. Only works if *himitsud*(1) was started
+	with the -D flag.
+
+# EXAMPLES
+
+To query for all keys matching *proto=web*:
+
+```
+$ hiq proto=web
+```
+
+To query for a key matching *proto=web* and *host=example.org* with a required
+*username* and *password* and an optional *comment*:
+
+```
+$ hiq proto=web host=example.org username password! comment?
+```
+
+To query for a key and decrypt it, returning the password field alone:
+
+```
+$ hiq -dFpassword proto=web host=example.org
+```
+
+To add a new key to the store:
+
+```
+$ hiq -a
+proto=web host=example.org user=jdoe password!=hunter2
+```
+
+To delete all keys matching *host=example.org*:
+
+```
+$ hiq -d host=example.org
+```
+
+# SEE ALSO
+
+*himitsu*(7), *himitsu-ipc*(5)
+
+# AUTHORS
+
+Maintained by Drew DeVault <sir@cmpwn.com>, who is assited by other
+contributors. Up-to-date source code can be found at
+https://git.sr.ht/~sircmpwn/himitsu, and bugs/patches can be submitted by email
+to ~sircmpwn/himitsu-devel@lists.sr.ht.

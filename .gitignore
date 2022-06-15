@@ -2,3 +2,6 @@
 /himitsu-init
 /hiq
 .teststore/
+*.1
+*.5
+*.7
