@@ -13,7 +13,7 @@ use unix::tty;
 
 // XXX: Distros may want to modify the default config
 const conf: str = `[himitsud]
-prompter=hiprompt-gtk-py`;
+prompter=hiprompt-gtk`;
 
 export fn main() void = {
 	const tty = match (tty::open()) {
