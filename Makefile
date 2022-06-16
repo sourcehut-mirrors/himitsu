@@ -27,15 +27,15 @@ check:
 	hare test
 
 DOCS=\
-     himitsu.7 \
      himitsud.1 \
      himitsu-init.1 \
-     hiq.1
+     hiq.1 \
+     himitsu.ini.5 \
+     himitsu-ipc.5 \
+     himitsu-prompter.5 \
+     himitsu.7
 
 docs: $(DOCS)
-
-himitsu.7: docs/himitsu.7.scd
-	$(SCDOC) <$< >$@
 
 himitsud.1: docs/himitsud.1.scd
 	$(SCDOC) <$< >$@
@@ -46,10 +46,17 @@ himitsu-init.1: docs/himitsu-init.1.scd
 hiq.1: docs/hiq.1.scd
 	$(SCDOC) <$< >$@
 
-# TODO:
-# himitsu-ipc(5)
-# himitsu-prompter(5)
-# himitsu.ini(5)
+himitsu.ini.5: docs/himitsu.ini.5.scd
+	$(SCDOC) <$< >$@
+
+himitsu-ipc.5: docs/himitsu-ipc.5.scd
+	$(SCDOC) <$< >$@
+
+himitsu-prompter.5: docs/himitsu-prompter.5.scd
+	$(SCDOC) <$< >$@
+
+himitsu.7: docs/himitsu.7.scd
+	$(SCDOC) <$< >$@
 
 clean:
 	rm -f himitsud himitsu-init hiq
@@ -67,6 +74,9 @@ install:
 	install -m644 himitsud.1 $(DESTDIR)$(MANDIR)/man1/himitsud.1
 	install -m644 himitsu-init.1 $(DESTDIR)$(MANDIR)/man1/himitsu-init.1
 	install -m644 hiq.1 $(DESTDIR)$(MANDIR)/man1/hiq.1
+	install -m644 himitsu.ini.5 $(DESTDIR)$(MANDIR)/man5/himitsu.ini.5
+	install -m644 himitsu-ipc.5 $(DESTDIR)$(MANDIR)/man5/himitsu-ipc.5
+	install -m644 himitsu-prompter.5 $(DESTDIR)$(MANDIR)/man5/himitsu-prompter.5
 	install -m644 himitsu.7 $(DESTDIR)$(MANDIR)/man7/himitsu.7
 
 uninstall:
