@@ -16,7 +16,7 @@ The default configuration file is installed by *himitsu-init*(1).
 
 # APPLICATION USAGE
 
-The set of configuration parameters recognized by the Himitsu distrubtion are
+The set of configuration parameters recognized by the Himitsu distribution are
 specified below. Third-party software providing Himitsu integrations are
 encouraged to configure themselves using this file. Any sections or keys which
 are not understood by any particular application will be disregarded.
@@ -38,7 +38,7 @@ available options are:
 
 # AUTHORS
 
-Maintained by Drew DeVault <sir@cmpwn.com>, who is assited by other
+Maintained by Drew DeVault <sir@cmpwn.com>, who is assisted by other
 contributors. Up-to-date source code can be found at
 https://git.sr.ht/~sircmpwn/himitsu, and bugs/patches can be submitted by email
 to ~sircmpwn/himitsu-devel@lists.sr.ht.

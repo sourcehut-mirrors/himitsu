@@ -200,7 +200,7 @@ user's secret keys.
 
 # AUTHORS
 
-Maintained by Drew DeVault <sir@cmpwn.com>, who is assited by other
+Maintained by Drew DeVault <sir@cmpwn.com>, who is assisted by other
 contributors. Up-to-date source code can be found at
 https://git.sr.ht/~sircmpwn/himitsu, and bugs/patches can be submitted by email
 to ~sircmpwn/himitsu-devel@lists.sr.ht.
