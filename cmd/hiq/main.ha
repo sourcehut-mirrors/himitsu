@@ -19,13 +19,6 @@ type flag = enum uint {
 	DECRYPT = 1 << 1,
 };
 
-type operation = enum uint {
-	QUERY,
-	ADD,
-	DEL,
-	QUIT,
-};
-
 fn write_item(
 	out: io::handle,
 	items: str,
@@ -61,22 +54,22 @@ export fn main() void = {
 	const cmd = getopt::parse(os::args, usage...);
 	defer getopt::finish(&cmd);
 
-	let op = operation::QUERY;
+	let op = client::operation::QUERY;
 	let flags: flag = 0, field = "";
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
 		switch (cmd.opts[i].0) {
 		case '1' =>
 			flags |= flag::ONE;
 		case 'a' =>
-			op = operation::ADD;
+			op = client::operation::ADD;
 		case 'd' =>
 			flags |= flag::DECRYPT;
 		case 'D' =>
-			op = operation::DEL;
+			op = client::operation::DEL;
 		case 'F' =>
 			field = cmd.opts[i].1;
 		case 'Q' =>
-			op = operation::QUIT;
+			op = client::operation::QUIT;
 		};
 	};
 
@@ -93,7 +86,7 @@ export fn main() void = {
 	};
 	defer io::close(conn)!;
 
-	if (op == operation::ADD && len(cmd.args) == 0) {
+	if (op == client::operation::ADD && len(cmd.args) == 0) {
 		if (tty::isatty(os::stderr) && tty::isatty(os::stdin_file)) {
 			fmt::errorln("Enter new keys, one per line, then press ^d:")!;
 		};
@@ -113,7 +106,7 @@ export fn main() void = {
 				defer strings::freeall(query);
 				free(line);
 
-				send(conn, operation::ADD, flags, field, query);
+				send(conn, client::operation::ADD, flags, field, query);
 			};
 		};
 	} else {
@@ -128,19 +121,19 @@ export fn main() void = {
 
 fn send(
 	conn: io::file,
-	op: operation,
+	op: client::operation,
 	flags: flag,
 	field: str,
 	query: []str,
 ) void = {
 	fmt::fprint(conn, switch (op) {
-	case operation::QUERY =>
+	case client::operation::QUERY =>
 		yield "query";
-	case operation::ADD =>
+	case client::operation::ADD =>
 		yield "add";
-	case operation::DEL =>
+	case client::operation::DEL =>
 		yield "del";
-	case operation::QUIT =>
+	case client::operation::QUIT =>
 		yield "quit";
 	})!;
 	for (let i = 0z; i < len(query); i += 1) {
