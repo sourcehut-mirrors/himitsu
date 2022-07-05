@@ -16,6 +16,7 @@ export type operation = enum uint {
 	QUERY,
 	ADD,
 	DEL,
+	QUIT,
 };
 
 // Flags for query operations.
@@ -76,6 +77,8 @@ export fn query(
 		fmt::fprint(&buf, "add")!;
 	case operation::DEL =>
 		fmt::fprint(&buf, "del")!;
+	case operation::QUIT =>
+		fmt::fprint(&buf, "quit")!;
 	};
 
 	if (flags & flags::DECRYPT != 0) {
