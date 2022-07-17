@@ -2,7 +2,7 @@ himitsu-prompter(5)
 
 # NAME
 
-*himitsu-prompter* - Protocol used for the *himitsu*(7) prompter
+himitsu-prompter - protocol used for the *himitsu*(7) prompter
 
 # DESCRIPTION
 

@@ -2,7 +2,7 @@ himitsu(7)
 
 # NAME
 
-*himitsu* - Himitsu key store
+himitsu - Himitsu key store
 
 # DESCRIPTION
 

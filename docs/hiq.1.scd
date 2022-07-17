@@ -2,7 +2,7 @@ hiq(1)
 
 # NAME
 
-*hiq* - Query the *himitsu*(7) key store
+hiq - query the *himitsu*(7) key store
 
 # SYNOPSIS
 

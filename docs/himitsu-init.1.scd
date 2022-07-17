@@ -2,7 +2,7 @@ himitsu-init(1)
 
 # NAME
 
-*himitsu-init* - Initialize a new *himitsu*(7) key store
+himitsu-init - initialize a new *himitsu*(7) key store
 
 # SYNOPSIS
 

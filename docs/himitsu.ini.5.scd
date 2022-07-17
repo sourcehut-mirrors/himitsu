@@ -2,7 +2,7 @@ himitsu.ini(5)
 
 # NAME
 
-*himitsu.ini* - configuration file for *himitsu*(7)
+himitsu.ini - configuration file for *himitsu*(7)
 
 # FILE FORMAT
 

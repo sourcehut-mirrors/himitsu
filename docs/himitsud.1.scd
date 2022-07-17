@@ -2,7 +2,7 @@ himitsud(1)
 
 # NAME
 
-*himitsud* - Himitsu key ring daemon
+himitsud - *himitsu*(7) key ring daemon
 
 # SYNOPSIS
 

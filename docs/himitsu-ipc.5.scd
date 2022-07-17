@@ -2,7 +2,7 @@ himitsu-ipc(5)
 
 # NAME
 
-*himitsu-ipc*(5) - IPC protocol implemented by *himitsud*(1)
+himitsu-ipc - IPC protocol implemented by *himitsud*(1)
 
 # DESCRIPTION
 
