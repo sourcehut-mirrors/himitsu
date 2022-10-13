@@ -79,7 +79,7 @@ proto=web host=example.org user=jdoe password!=hunter2
 To delete all keys matching *host=example.org*:
 
 ```
-$ hiq -d host=example.org
+$ hiq -D host=example.org
 ```
 
 # SEE ALSO
