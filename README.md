@@ -8,7 +8,9 @@ have been independently audited. This project is a work in progress.**
 Himitsu is a secret storage system for Unix systems. It is suitable for storing
 passwords, private keys, and so on.
 
-We hang out in #himitsu on Libera Chat.
+We hang out in #himitsu on Libera Chat. Please send patches to
+[the himitsu-devel mailing list](https://lists.sr.ht/~sircmpwn/himitsu-devel)
+using the following address: <~sircmpwn/himitsu-devel@lists.sr.ht>.
 
 ## Installation
 
