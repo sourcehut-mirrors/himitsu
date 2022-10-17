@@ -3,6 +3,7 @@ use dirs;
 use errors;
 use fmt;
 use getopt;
+use himitsu::client;
 use himitsu::query;
 use io;
 use net::unix;
