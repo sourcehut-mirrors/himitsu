@@ -39,7 +39,7 @@ export fn newprompter(command: str, args: []str) (prompter | error) = {
 		return protoerror;
 	case let buf: []u8 =>
 		defer free(buf);
-		const string = strings::fromutf8(buf);
+		const string = strings::fromutf8(buf)!;
 		if (string != "version 0.0.0") {
 			// XXX: Return "unsupported" error instead?
 			return protoerror;

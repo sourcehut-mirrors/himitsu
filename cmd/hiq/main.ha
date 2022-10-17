@@ -96,7 +96,7 @@ export fn main() void = {
 			case let line: []u8 =>
 				// NB. Can't defer free(line), causes a
 				// use-after-free in fmt::fatal
-				const line = strings::fromutf8(line);
+				const line = strings::fromutf8(line)!;
 				const query = match (shlex::split(line)) {
 				case let q: []str =>
 					yield q;
@@ -150,7 +150,7 @@ fn send(
 	case let line: []u8 =>
 		// NB. Can't defer free(line), causes a use-after-free in
 		// fmt::fatal
-		let resp = strings::fromutf8(line);
+		let resp = strings::fromutf8(line)!;
 		let resp = strings::cut(resp, " ");
 		switch (resp.0) {
 		case "key" =>

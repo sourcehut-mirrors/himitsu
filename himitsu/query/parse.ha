@@ -36,7 +36,7 @@ export type invalid = !void;
 // return value to [[finish]] when they are done with it.
 export fn parse(in: io::handle) (query | invalid | io::error) = {
 	const data = io::drain(in)?;
-	const data = match (strings::try_fromutf8(data)) {
+	const data = match (strings::fromutf8(data)) {
 	case let data: str =>
 		yield data;
 	case utf8::invalid =>

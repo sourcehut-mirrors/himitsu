@@ -198,7 +198,7 @@ fn client_readable(serv: *server, client: *client) void = {
 			return;
 		};
 
-		const line = match (strings::try_fromutf8(client.rbuf[..i])) {
+		const line = match (strings::fromutf8(client.rbuf[..i])) {
 		case let s: str =>
 			yield s;
 		case utf8::invalid =>

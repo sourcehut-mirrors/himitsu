@@ -98,7 +98,7 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 
 	const keydata = match (bufio::scanline(input)) {
 	case let buf: []u8 =>
-		yield strings::fromutf8(buf);
+		yield strings::fromutf8(buf)!;
 	case io::EOF =>
 		return badstore;
 	};
