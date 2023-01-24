@@ -63,12 +63,16 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 	};
 
 	match (cmd(serv, client, args)) {
-	case let err: servererror =>
-		writefmt(client, "error Internal error");
-		return err;
-	case query::invalid =>
-		// XXX: Update me when there are more client errors
-		writefmt(client, "error {}", strerror(query::invalid));
+	case let err: cmderror =>
+		// XXX: Probably a harec bug
+		match (err) {
+		case let err: servererror =>
+			writefmt(client, "error Internal error");
+			return err;
+		case query::invalid =>
+			// XXX: Update me when there are more client errors
+			writefmt(client, "error {}", strerror(query::invalid));
+		};
 	case void => yield;
 	};
 };
