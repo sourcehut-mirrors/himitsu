@@ -72,34 +72,20 @@ export fn query(
 
 	switch (op) {
 	case operation::QUERY =>
-		fmt::fprint(&buf, "query")!;
+		fmt::fprint(&buf, "query ")!;
 	case operation::ADD =>
-		fmt::fprint(&buf, "add")!;
+		fmt::fprint(&buf, "add ")!;
 	case operation::DEL =>
-		fmt::fprint(&buf, "del")!;
+		fmt::fprint(&buf, "del ")!;
 	case operation::QUIT =>
-		fmt::fprint(&buf, "quit")!;
+		fmt::fprint(&buf, "quit ")!;
 	};
 
 	if (flags & flags::DECRYPT != 0) {
-		fmt::fprint(&buf, " -d")!;
+		fmt::fprint(&buf, "-d ")!;
 	};
 
-	for (let i = 0z; i < len(q.items); i += 1) {
-		const pair = &q.items[i];
-		fmt::fprintf(&buf, " {}", pair.key)!;
-		if (pair.private) {
-			fmt::fprintf(&buf, "!")!;
-		};
-		if (pair.optional) {
-			fmt::fprintf(&buf, "?")!;
-		};
-		if (pair.value != "") {
-			fmt::fprintf(&buf, "=")!;
-			shlex::quote(&buf, pair.value)!;
-		};
-	};
-	fmt::fprintln(&buf)!;
+	query::unparse(&buf, q)!;
 
 	io::writeall(conn, bufio::buffer(&buf))?;
 
