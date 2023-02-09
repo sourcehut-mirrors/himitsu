@@ -88,7 +88,7 @@ export fn main() void = {
 	defer io::close(conn)!;
 
 	if (op == client::operation::ADD && len(cmd.args) == 0) {
-		if (tty::isatty(os::stderr) && tty::isatty(os::stdin_file)) {
+		if (tty::isatty(os::stderr_file) && tty::isatty(os::stdin_file)) {
 			fmt::errorln("Enter new keys, one per line, then press ^d:")!;
 		};
 		for (true) {
