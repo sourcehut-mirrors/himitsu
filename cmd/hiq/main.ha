@@ -74,16 +74,20 @@ export fn main() void = {
 		};
 	};
 
-	let buf = path::init();
-	// TODO: Bubble up dirs::runtime errors
-	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
-	let conn = match (unix::connect(sockpath)) {
+	let conn = match (client::connect()) {
 	case let s: net::socket =>
 		yield s;
-	case errors::noentry =>
-		fmt::fatal("error: himitsud connection failed (is it running?)");
+	case let e: client::hierror =>
+		fmt::fatal(e);
+	case let e: io::error =>
+		fmt::fatal("error:", io::strerror(e));
 	case let e: net::error =>
-		fmt::fatal("error:", net::strerror(e));
+		match (e) {
+		case errors::noentry =>
+			fmt::fatal("error: himitsud connection failed (is it running?)");
+		case =>
+			fmt::fatal("error:", net::strerror(e));
+		};
 	};
 	defer io::close(conn)!;
 
