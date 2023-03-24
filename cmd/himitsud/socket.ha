@@ -50,6 +50,20 @@ fn bind(
 	let buf = path::init();
 	path::set(&buf, statedir, "himitsu")!;
 	const sockpath = path::string(&buf);
+
+	match (unix::connect(sockpath)) {
+	case net::socket =>
+		fmt::fatal("himitsud is already running");
+	case errors::refused =>
+		match (os::remove(sockpath)) {
+		case void => yield;
+		case let err: fs::error =>
+			log::fatal(fs::strerror(err));
+		};
+	case errors::noentry => yield;
+	case let err: net::error =>
+		log::fatal(net::strerror(err));
+	};
 	const sock = match (unix::listen(sockpath, net::sockflags::NOCLOEXEC)) {
 	case let l: net::socket =>
 		yield l;
