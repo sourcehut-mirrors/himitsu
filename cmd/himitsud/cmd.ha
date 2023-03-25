@@ -69,6 +69,8 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 		case let err: servererror =>
 			writefmt(client, "error Internal error");
 			return err;
+		case let err: prompt::error =>
+			writefmt(client, "error {}", prompt::strerror(err));
 		case query::invalid =>
 			// XXX: Update me when there are more client errors
 			writefmt(client, "error {}", strerror(query::invalid));

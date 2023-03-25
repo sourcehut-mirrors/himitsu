@@ -38,7 +38,7 @@ export fn strerror(err: error) const str = {
 	case let err: io::error =>
 		return io::strerror(err);
 	case let err: net::error =>
-		if (err is errors::noentry) {
+		if (err is errors::noentry || err is errors::refused) {
 			return "Could not connect to himitsud (is it running?)";
 		};
 		return net::strerror(err);

@@ -20,6 +20,8 @@ export fn strerror(err: error) const str = {
 		return "Protocol error";
 	case prompterror =>
 		return "Prompter reported internal error";
+	case exec::nocmd =>
+		return "Could not run prompter: command not found";
 	case let err: fs::error =>
 		return fs::strerror(err);
 	case let err: io::error =>
