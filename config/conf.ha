@@ -56,6 +56,10 @@ export fn load() (config | error) = {
 		};
 	};
 
+	if (len(conf.prompter) == 0) {
+		fmt::fatal("Config error: No prompter defined.");
+	};
+
 	return conf;
 };
 
