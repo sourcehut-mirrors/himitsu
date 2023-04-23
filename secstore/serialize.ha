@@ -66,28 +66,16 @@ fn write_private(
 	const file = os::open(path::string(&buf))?;
 	defer io::close(file)!;
 
-	let mac: crypto::mac = [0...];
-	let nonce: crypto::nonce = [0...];
-	io::readall(file, mac)?;
-	io::readall(file, nonce)?;
-	let ciphertext = io::drain(file)?;
-	defer {
-		bytes::zero(ciphertext);
-		free(ciphertext);
-	};
-
-	let key: [32]u8 = [0...];
-	defer bytes::zero(key);
-	keystore::read(store.key as keystore::key, key);
-
-	let box: crypto::box = (mac, nonce, ciphertext);
-	const plaintext = match (crypto::decrypt(&key, &box)) {
-	case errors::invalid =>
+	let plaintext = match (secunbox(file, store.key as keystore::key)) {
+	case let b: []u8 =>
+		yield b;
+	case =>
 		return badstore;
-	case let buf: []u8 =>
-		yield buf;
 	};
-	defer bytes::zero(plaintext);
+	defer {
+		bytes::zero(plaintext);
+		free(plaintext);
+	};
 
 	io::writeall(sink, plaintext)?;
 };

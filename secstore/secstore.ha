@@ -69,6 +69,52 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	};
 };
 
+// Encrypts msg and writes it to sink
+fn secbox(
+	sink: io::handle,
+	key: (keystore::key | []u8),
+	msg: []u8
+) (void | io::error) = {
+	let keybuf: [32]u8 = [0...];
+	defer bytes::zero(keybuf);
+	match (key) {
+	case let key: keystore::key =>
+		keystore::read(key, keybuf);
+	case let key: []u8 =>
+		keybuf[..] = key[..];
+	};
+
+	let nonce: crypto::nonce = [0...];
+	random::buffer(nonce);
+
+	const box = crypto::encrypt(&keybuf, &nonce, msg);
+
+	io::write(sink, box.0)?;
+	io::write(sink, box.1)?;
+	io::write(sink, box.2)?;
+};
+
+// Reads the ciphertext created with [[secbox]] from 'src' and returns the
+// plaintext. The user must free the plaintext after use.
+fn secunbox(src: io::handle, key: (keystore::key | []u8)) ([]u8 | io::error) = {
+	let keybuf: [32]u8 = [0...];
+	defer bytes::zero(keybuf);
+	match (key) {
+	case let key: keystore::key =>
+		keystore::read(key, keybuf);
+	case let key: []u8 =>
+		keybuf[..] = key[..];
+	};
+
+	let mac: crypto::mac = [0...];
+	let nonce: crypto::nonce = [0...];
+	io::readall(src, mac)?;
+	io::readall(src, nonce)?;
+	let ciphertext = io::drain(src)?;
+	let box: crypto::box = (mac, nonce, ciphertext);
+	return crypto::decrypt(&keybuf, &box)?;
+};
+
 // Opens the secstore. The caller should call [[unlock]] to decrypt it, and
 // [[close]] when they're done with it.
 export fn open() (secstore | error) = {
@@ -242,18 +288,12 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 	const file = os::create(path::string(&buf), 0o600)!;
 	defer io::close(file)!;
 
-	let key: [32]u8 = [0...];
-	defer bytes::zero(key);
-	keystore::read(store.key as keystore::key, key);
-
-	let nonce: crypto::nonce = [0...];
-	random::buffer(nonce);
-	let ciphertext = strings::toutf8(strings::dup(val));
-	defer free(ciphertext);
-	const box = crypto::encrypt(&key, &nonce, ciphertext);
-	io::write(file, box.0)!;
-	io::write(file, box.1)!;
-	io::write(file, box.2)!;
+	let plain = strings::toutf8(strings::dup(val));
+	defer {
+		bytes::zero(plain);
+		free(plain);
+	};
+	secbox(file, store.key as keystore::key, plain)!;
 	return id;
 };
 
@@ -284,18 +324,8 @@ fn add_index(store: *secstore, entry: *entry) void = {
 
 	const buf = bufio::buffer(&buf);
 
-	let key: [32]u8 = [0...];
-	defer bytes::zero(key);
-	keystore::read(store.key as keystore::key, key);
-
-	let nonce: crypto::nonce = [0...];
-	random::buffer(nonce);
-
-	const box = crypto::encrypt(&key, &nonce, buf);
 	const enc = base64::newencoder(&base64::std_encoding, store.index);
-	io::write(&enc, box.0)!;
-	io::write(&enc, box.1)!;
-	io::write(&enc, box.2)!;
+	secbox(&enc, store.key as keystore::key, buf)!;
 	io::close(&enc)!;
 	fmt::fprintln(store.index)!;
 };
@@ -320,18 +350,8 @@ fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 		const buf = bufio::fixed(line, io::mode::READ);
 		const dec = base64::newdecoder(&base64::std_encoding, &buf);
 
-		let mac: crypto::mac = [0...];
-		let nonce: crypto::nonce = [0...];
-		io::readall(&dec, mac)?;
-		io::readall(&dec, nonce)?;
-		let ciphertext = io::drain(&dec)?;
-		defer {
-			bytes::zero(ciphertext);
-			free(ciphertext);
-		};
+		const plaintext = secunbox(&dec, key)?;
 
-		let box: crypto::box = (mac, nonce, ciphertext);
-		const plaintext = crypto::decrypt(&key, &box)?;
 		const buf = bufio::fixed(plaintext, io::mode::READ);
 		const q = query::parse(&buf)!;
 		defer query::finish(&q);
