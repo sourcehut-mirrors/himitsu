@@ -21,6 +21,14 @@ use uuid;
 def KEY_MEM: u32 = 100000;
 def KEY_PASSES: u32 = 0;
 
+type keyversion = enum u8 {
+	// Buggy argon2 key
+	V0 = 0,
+
+	// argon2 key encrypted master key
+	V1 = 1,
+};
+
 // Initializes a new secstore using the provided passphrase. The caller should
 // call [[close]] when they're done with it.
 export fn create(passphrase: []u8) (secstore | error) = {
@@ -29,7 +37,6 @@ export fn create(passphrase: []u8) (secstore | error) = {
 
 	let salt: [16]u8 = [0...];
 	random::buffer(salt);
-	// TODO: Switch to argon2id by default
 	const config = argon2::config {
 		mem = KEY_MEM,
 		parallel = 1,
@@ -37,10 +44,9 @@ export fn create(passphrase: []u8) (secstore | error) = {
 		version = argon2::VERSION,
 		...
 	};
-	argon2::argon2i(key, passphrase, salt, &config)!;
+	argon2::argon2id(key, passphrase, salt, &config)!;
 
 	const verify = key[32..];
-	const key = keystore::newkey(key[..32], "secstore")!;
 	const dir = strings::dup(dirs::data("himitsu"));
 
 	let buf = path::init();
@@ -51,17 +57,29 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	const keyfile = &bufio::buffered(keyfile, [], wbuf);
 	defer io::close(keyfile)!;
 
-	fmt::fprintf(keyfile, "argon2i:{}:{}:", KEY_MEM, KEY_PASSES)?;
+	fmt::fprintf(keyfile, "argon2id:{}:{}:", KEY_MEM, KEY_PASSES)?;
 	base64::encode(keyfile, &base64::std_encoding, salt)?;
 	fmt::fprintf(keyfile, ":")?;
 	base64::encode(keyfile, &base64::std_encoding, verify)?;
-	fmt::fprintln(keyfile)?;
+	fmt::fprintf(keyfile, ":{}:", keyversion::V1: u8)?;
+
+	let masterkeybuf: [32]u8 = [0...];
+	random::buffer(masterkeybuf);
+	defer bytes::zero(masterkeybuf);
+	let masterkey = keystore::newkey(masterkeybuf, "secstore")!;
+
+	let mkkey = keystore::newkey(key[..32], "masterkeykey")!;
+	defer keystore::destroy(mkkey);
+
+	let enc = base64::newencoder(&base64::std_encoding, keyfile);
+	secbox(&enc, mkkey, masterkeybuf)!;
+	io::close(&enc)!;
 
 	path::set(&buf, dir, "index")!;
 	const index = os::create(path::string(&buf), 0o600)?;
 
 	return secstore {
-		key = key,
+		key = masterkey,
 		state = state::UNLOCKED,
 		dir = dir,
 		index = index,
@@ -151,13 +169,10 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	defer free(keydata);
 	const items = strings::split(keydata, ":");
 	defer free(items);
-	if (len(items) != 5) {
+	if (len(items) != 5 && len(items) != 7) {
 		return badstore;
 	};
 
-	if (items[0] != "argon2i") {
-		return badstore;
-	};
 	const mem = match (strconv::stou32(items[1])) {
 	case let u: u32 =>
 		yield u;
@@ -191,10 +206,23 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 		return badstore;
 	};
 
+	let kv = if (len(items) == 5) {
+		yield keyversion::V0;
+	} else {
+		yield match (strconv::stou8(items[5])) {
+		case let v: u8 =>
+			if (v > keyversion::V1) {
+				return badstore;
+			};
+			yield v: keyversion;
+		case =>
+			return badstore;
+		};
+	};
+
 	let key: [32 + 16]u8 = [0...];
 	defer bytes::zero(key);
 
-	// TODO: Switch to argon2id by default
 	const config = argon2::config {
 		mem = mem,
 		parallel = 1,
@@ -202,13 +230,28 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 		version = argon2::VERSION,
 		...
 	};
-	argon2::argon2i(key, passphrase, salt, &config)!;
+	switch (items[0]) {
+	case "argon2i" =>
+		argon2::argon2i(key, passphrase, salt, &config)!;
+	case "argon2id" =>
+		argon2::argon2id(key, passphrase, salt, &config)!;
+	case =>
+		return badstore;
+	};
 
 	if (!crypto::compare(key[32..], verify)) {
 		return badpass;
 	};
 
-	store.key = keystore::newkey(key[..32], "secstore")!;
+	store.key = switch (kv) {
+	case keyversion::V0 =>
+		yield loadv0key(key[..32]);
+	case keyversion::V1 =>
+		yield loadv1key(key[..32], items[6])?;
+	case =>
+		abort();
+	};
+
 	store.state = state::UNLOCKED;
 	match (load_index(store)) {
 	case void => yield;
@@ -217,6 +260,26 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	case errors::invalid =>
 		return badstore;
 	};
+};
+
+fn loadv0key(key: []u8) keystore::key =
+	keystore::newkey(key[..32], "secstore")!;
+
+fn loadv1key(key: []u8, enckey: str) (keystore::key | error) = {
+	const buf = bufio::fixed(strings::toutf8(enckey), io::mode::READ);
+	const dec = base64::newdecoder(&base64::std_encoding, &buf);
+	let masterkey = match (secunbox(&dec, key)) {
+	case let b: []u8 =>
+		yield b;
+	case =>
+		return badstore;
+	};
+	defer {
+		bytes::zero(masterkey);
+		free(masterkey);
+	};
+
+	return keystore::newkey(masterkey, "secstore")!;
 };
 
 // Locks the key store, unloading the decryption keys.
