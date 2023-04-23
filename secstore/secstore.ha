@@ -1,6 +1,7 @@
 use bufio;
 use bytes;
 use crypto::argon2;
+use crypto::argon2bug;
 use crypto::keystore;
 use crypto::random;
 use crypto;
@@ -232,7 +233,11 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	};
 	switch (items[0]) {
 	case "argon2i" =>
-		argon2::argon2i(key, passphrase, salt, &config)!;
+		if (kv == keyversion::V0) {
+			argon2bug::argon2i(key, passphrase, salt, &config)!;
+		} else {
+			argon2::argon2i(key, passphrase, salt, &config)!;
+		};
 	case "argon2id" =>
 		argon2::argon2id(key, passphrase, salt, &config)!;
 	case =>
