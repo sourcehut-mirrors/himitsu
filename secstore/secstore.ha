@@ -33,12 +33,17 @@ type keyversion = enum u8 {
 // Initializes a new secstore using the provided passphrase. The caller should
 // call [[close]] when they're done with it.
 export fn create(passphrase: []u8) (secstore | error) = {
+	let dir = strings::dup(dirs::data("himitsu"));
+	return createat(passphrase, dir);
+};
+
+fn createat(passphrase: []u8, dir: const str) (secstore | error) = {
 	let key: [32 + 16]u8 = [0...];
 	defer bytes::zero(key);
 
 	let salt: [16]u8 = [0...];
 	random::buffer(salt);
-	const config = argon2::config {
+	const config = argon2::conf {
 		mem = KEY_MEM,
 		parallel = 1,
 		passes = KEY_PASSES + 3,
@@ -48,7 +53,6 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	argon2::argon2id(key, passphrase, salt, &config)!;
 
 	const verify = key[32..];
-	const dir = strings::dup(dirs::data("himitsu"));
 
 	let buf = path::init();
 	path::set(&buf, dir, "key")!;
@@ -67,7 +71,7 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	let masterkeybuf: [32]u8 = [0...];
 	random::buffer(masterkeybuf);
 	defer bytes::zero(masterkeybuf);
-	let masterkey = keystore::newkey(masterkeybuf, "secstore")!;
+	let masterkey = keystore::newkey(masterkeybuf, "secstoreinit")!;
 
 	let mkkey = keystore::newkey(key[..32], "masterkeykey")!;
 	defer keystore::destroy(mkkey);
@@ -85,6 +89,64 @@ export fn create(passphrase: []u8) (secstore | error) = {
 		dir = dir,
 		index = index,
 		entries = [],
+	};
+};
+
+// Generates a new master key and re-encrypts the secstore.
+export fn reencrypt(passphrase: []u8) (void | error) = {
+	let oldstore = openat(strings::dup(dirs::data("himitsu")))?;
+	unlock(&oldstore, passphrase)?;
+	let closed = false;
+	defer if (!closed) close(&oldstore);
+
+	let store = createat(passphrase, strings::dup(dirs::data("himitsu.new")))!;
+	defer if (!closed) close(&store);
+
+	const q = query::query { ... };
+	const iter = query(&oldstore, &q);
+	for (true) {
+		const item = match (next(&oldstore, &iter)) {
+		case let item: *entry =>
+			let buf = bufio::dynamic(io::mode::RDWR);
+			defer io::close(&buf)!;
+			write(&oldstore, &buf, item, true)!;
+
+			io::seek(&buf, 0, io::whence::SET)!;
+
+			let iq = query::parse(&buf)!;
+			defer query::finish(&iq);
+			add(&store, &iq)!;
+			yield item;
+		case void =>
+			break;
+		};
+	};
+
+	close(&oldstore);
+	close(&store);
+	closed = true;
+
+	let dir = strings::dup(dirs::data("himitsu"));
+	defer free(dir);
+	let dirold = strings::dup(dirs::data("himitsu.old"));
+	defer free(dirold);
+
+	match (os::rename(dir, dirold)) {
+	case let e: fs::error =>
+		fmt::fatalf("Moving himitsu to himitsu.old failed: {}",
+			fs::strerror(e));
+	case =>
+		yield;
+	};
+
+	let dirnew = strings::dup(dirs::data("himitsu.new"));
+	defer free(dirnew);
+	match (os::rename(dirnew, dir)) {
+	case let e: fs::error =>
+		fmt::fatalf("Moving himitsu.new to himitsu failed: {}",
+			fs::strerror(e));
+	case =>
+		yield;
 	};
 };
 
@@ -137,7 +199,11 @@ fn secunbox(src: io::handle, key: (keystore::key | []u8)) ([]u8 | io::error) = {
 // Opens the secstore. The caller should call [[unlock]] to decrypt it, and
 // [[close]] when they're done with it.
 export fn open() (secstore | error) = {
-	const dir = strings::dup(dirs::data("himitsu"));
+	let dir = strings::dup(dirs::data("himitsu"));
+	return openat(dir);
+};
+
+fn openat(dir: str) (secstore | error) = {
 	let buf = path::init();
 	path::set(&buf, dir, "index")!;
 
@@ -224,7 +290,7 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	let key: [32 + 16]u8 = [0...];
 	defer bytes::zero(key);
 
-	const config = argon2::config {
+	const config = argon2::conf {
 		mem = mem,
 		parallel = 1,
 		passes = passes + 3,

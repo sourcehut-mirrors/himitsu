@@ -10,12 +10,31 @@ use path;
 use secstore;
 use strings;
 use unix::tty;
+use getopt;
+use net::unix;
+use net;
 
 // XXX: Distros may want to modify the default config
 const conf: str = `[himitsud]
 prompter=hiprompt-gtk`;
 
 export fn main() void = {
+
+	const cmd = getopt::parse(os::args,
+		"himitsu-init",
+		('r', "Change master key and re-encrypt the secstore."),
+	);
+	defer getopt::finish(&cmd);
+
+	let re = false;
+	for (let i = 0z; i < len(cmd.opts); i += 1) {
+		const opt = cmd.opts[i];
+		switch (opt.0) {
+		case 'r' =>
+			re = true;
+		};
+	};
+
 	const tty = match (tty::open()) {
 	case let file: io::file =>
 		yield file;
@@ -31,6 +50,11 @@ export fn main() void = {
 	let wbuf: [os::BUFSIZ]u8 = [0...];
 	const tty = &bufio::buffered(tty, rbuf, wbuf);
 	defer io::close(tty)!;
+
+	if (re) {
+		reencrypt(tty);
+		return;
+	};
 
 	// TODO: Prompt before overwriting existing secstore
 	fmt::errorln("Initializing a new himitsu secstore.")!;
@@ -102,4 +126,66 @@ fn writeconf() void = {
 	};
 
 	fmt::println("Wrote config file to", confpath)!;
+};
+
+fn reencrypt(tty: io::handle) void = {
+	fmt::errorln("Re-encrypting the secstore.\n")!;
+	fmt::errorln("There are not many safeguards in effect, so please read carefully.")!;
+	fmt::errorln()!;
+	fmt::errorfln(
+		"Make sure that no himitsud process is currently running. The current\n"
+		"secstore will be moved to himitsu.old in our data directory:\n\n"
+		"\t{}\n\nIf the process fails in between, make sure that himitsu.new in the \n"
+		"data directory is removed and try again.\n",
+		dirs::data(""),
+	)!;
+
+	fmt::error("Please enter your passphrase: ")!;
+	const pass = match (bufio::scanline(tty)!) {
+	case let buf: []u8 =>
+		yield buf;
+	case io::EOF =>
+		fmt::fatal("Error: no passphrase supplied");
+	};
+	defer free(pass);
+	fmt::errorln()!;
+
+	if (checkhimitsud()) {
+		fmt::fatal("Error: Please make sure that himitsud is not running");
+	};
+
+	match (secstore::reencrypt(pass)) {
+	case let e: secstore::error =>
+		fmt::fatal("Error:", secstore::strerror(e));
+	case void =>
+		yield;
+	};
+
+	fmt::errorln(
+		"\nSecstore has been re-encrypted. If everything works,you may remove the\n"
+		"himitsu.old folder from your data directory"
+	)!;
+};
+
+// check whether himitsud is running
+fn checkhimitsud() bool = {
+	let buf = path::init();
+	let rtdir = match (dirs::runtime()) {
+	case let e: fs::error =>
+		fmt::fatal("error getting runtime dir: ", fs::strerror(e));
+	case let d: str =>
+		yield d;
+	};
+
+	const sockpath = path::set(&buf, rtdir, "himitsu")!;
+	let conn = match (unix::connect(sockpath)) {
+	case errors::noentry =>
+		return false;
+	case let e: net::error =>
+		fmt::fatal("error:", net::strerror(e));
+	case let s: net::socket =>
+		yield s;
+	};
+	defer io::close(conn)!;
+	return true;
 };
