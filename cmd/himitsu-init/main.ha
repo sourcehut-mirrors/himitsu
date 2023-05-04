@@ -56,7 +56,16 @@ export fn main() void = {
 		return;
 	};
 
-	// TODO: Prompt before overwriting existing secstore
+	match (secstore::open()) {
+	case let s: secstore::secstore =>
+		secstore::close(&s);
+		fmt::fatal("Error: secstore already exists.");
+	case let e: secstore::error =>
+		if (!(e is fs::error && e: fs::error is errors::noentry)) {
+			fmt::fatal("Error:", secstore::strerror(e));
+		};
+	};
+
 	fmt::errorln("Initializing a new himitsu secstore.")!;
 	fmt::error("Please enter a passphrase: ")!;
 	const pass1 = match (bufio::scanline(tty)!) {
