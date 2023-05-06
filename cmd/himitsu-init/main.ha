@@ -1,3 +1,4 @@
+use ascii;
 use bufio;
 use bytes;
 use dirs;
@@ -43,7 +44,6 @@ export fn main() void = {
 	};
 
 	const termios = tty::termios_query(tty)!;
-	tty::noecho(&termios)!;
 	defer tty::termios_restore(&termios);
 
 	let rbuf: [os::BUFSIZ]u8 = [0...];
@@ -57,14 +57,32 @@ export fn main() void = {
 	};
 
 	match (secstore::open()) {
-	case let s: secstore::secstore =>
-		secstore::close(&s);
-		fmt::fatal("Error: secstore already exists.");
-	case let e: secstore::error =>
-		if (!(e is fs::error && e: fs::error is errors::noentry)) {
-			fmt::fatal("Error:", secstore::strerror(e));
+	case let store: secstore::secstore =>
+		secstore::close(&store);
+		fmt::error("A himitsu secstore already exists. Do you want to overwrite it? [y/N]: ")!;
+		const answer = match (bufio::scanline(tty)!) {
+		case let buf: []u8 =>
+			yield buf;
+		case io::EOF =>
+			fmt::fatal("Skipping secstore initialization.");
+		};
+		defer free(answer);
+		const answer = strings::fromutf8(answer)!;
+		if (ascii::strcasecmp(answer, "y") != 0 && ascii::strcasecmp(answer, "yes") != 0) {
+			fmt::fatal("Skipping secstore initialization.");
+		};
+		match (secstore::remove()) {
+		case void => void;
+		case let err: fs::error =>
+			fmt::fatal("Error removing existing secstore:", fs::strerror(err));
+		};
+	case let err: secstore::error =>
+		if (!(err is fs::error && err: fs::error is errors::noentry)) {
+			fmt::fatal("Error:", secstore::strerror(err));
 		};
 	};
+
+	tty::noecho(&termios)!;
 
 	fmt::errorln("Initializing a new himitsu secstore.")!;
 	fmt::error("Please enter a passphrase: ")!;
