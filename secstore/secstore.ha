@@ -37,6 +37,13 @@ export fn create(passphrase: []u8) (secstore | error) = {
 	return createat(passphrase, dir);
 };
 
+// Deletes the Himitsu secstore directory. This is not reversible and will
+// result in the loss of all keys in the secstore.
+export fn remove() (void | fs::error) = {
+	let dir = dirs::data("himitsu");
+	return fs::rmdirall(os::cwd, dir);
+};
+
 fn createat(passphrase: []u8, dir: const str) (secstore | error) = {
 	let key: [32 + 16]u8 = [0...];
 	defer bytes::zero(key);
