@@ -15,32 +15,6 @@ use strings;
 use strio;
 use unix::tty;
 
-type flag = enum uint {
-	ONE = 1 << 0,
-	DECRYPT = 1 << 1,
-};
-
-fn write_item(
-	out: io::handle,
-	items: str,
-	field: str
-) (void | io::error) = {
-	if (field == "") {
-		fmt::fprintln(out, items)!;
-		return;
-	};
-	let items = shlex::split(items)!;
-	defer strings::freeall(items);
-	let query = query::parse_items(items)!;
-	for (let i = 0z; i < len(query.items); i += 1) {
-		let item = query.items[i];
-		if (item.key != field) {
-			continue;
-		};
-		fmt::fprintln(out, item.value)?;
-	};
-};
-
 export fn main() void = {
 	let usage: [_]getopt::help = [
 		"secure key store client",
@@ -56,15 +30,17 @@ export fn main() void = {
 	defer getopt::finish(&cmd);
 
 	let op = client::operation::QUERY;
-	let flags: flag = 0, field = "";
+	let flags: client::flags = 0;
+	let field: (str | void) = void;
+	let one = false;
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
 		switch (cmd.opts[i].0) {
 		case '1' =>
-			flags |= flag::ONE;
+			one = true;
 		case 'a' =>
 			op = client::operation::ADD;
 		case 'd' =>
-			flags |= flag::DECRYPT;
+			flags |= client::flags::DECRYPT;
 		case 'D' =>
 			op = client::operation::DEL;
 		case 'F' =>
@@ -74,16 +50,20 @@ export fn main() void = {
 		};
 	};
 
-	let buf = path::init()!;
-	// TODO: Bubble up dirs::runtime errors
-	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
-	let conn = match (unix::connect(sockpath)) {
+	let conn = match (client::connect()) {
 	case let s: net::socket =>
 		yield s;
-	case errors::noentry =>
-		fmt::fatal("error: himitsud connection failed (is it running?)");
+	case let e: client::hierror =>
+		fmt::fatal(e);
+	case let e: io::error =>
+		fmt::fatal("error:", io::strerror(e));
 	case let e: net::error =>
-		fmt::fatal("error:", net::strerror(e));
+		match (e) {
+		case errors::noentry =>
+			fmt::fatal("error: himitsud connection failed (is it running?)");
+		case =>
+			fmt::fatal("error:", net::strerror(e));
+		};
 	};
 	defer io::close(conn)!;
 
@@ -97,77 +77,76 @@ export fn main() void = {
 			case let line: []u8 =>
 				// NB. Can't defer free(line), causes a
 				// use-after-free in fmt::fatal
-				const line = strings::fromutf8(line)!;
-				const query = match (shlex::split(line)) {
-				case let q: []str =>
+				const query = bufio::fixed(line, io::mode::READ);
+				const query = match (query::parse(&query)) {
+				case let q: query::query =>
 					yield q;
-				case =>
-					fmt::fatal("Invalid query:", line);
+				case query::invalid =>
+					fmt::fatal("Invalid query:", strings::fromutf8(line)!);
+				case let err: io::error =>
+					abort(); // reading from a fixed buffer shouldn't fail
 				};
-				defer strings::freeall(query);
+				defer query::finish(&query);
 				free(line);
-
-				send(conn, client::operation::ADD, flags, field, query);
+				send(conn, client::operation::ADD, &query, flags, field, one);
 			};
 		};
 	} else {
-		let query = alloc(cmd.args...);
-		defer free(query);
-		if (flags & flag::DECRYPT != 0) {
-			insert(query[0], "-d");
+		const query = match (query::parse_items(cmd.args)) {
+		case let q: query::query =>
+			yield q;
+		case query::invalid =>
+			fmt::fatal("Invalid query");
 		};
-		send(conn, op, flags, field, query);
+		defer query::finish(&query);
+		send(conn, op, &query, flags, field, one);
 	};
 };
 
 fn send(
-	conn: io::file,
+	conn: net::socket,
 	op: client::operation,
-	flags: flag,
-	field: str,
-	query: []str,
+	query: *query::query,
+	flags: client::flags,
+	field: (str | void),
+	one: bool,
 ) void = {
-	fmt::fprint(conn, switch (op) {
-	case client::operation::QUERY =>
-		yield "query";
-	case client::operation::ADD =>
-		yield "add";
-	case client::operation::DEL =>
-		yield "del";
-	case client::operation::QUIT =>
-		yield "quit";
-	})!;
-	for (let i = 0z; i < len(query); i += 1) {
-		fmt::fprint(conn, " ")!;
-		shlex::quote(conn, query[i])!;
+	const keys = match (client::query(conn, op, query, flags)) {
+	case let k: client::keyiter =>
+		yield k;
+	case let err: client::error =>
+		fmt::fatal("Error executing query:", client::strerror(err));
 	};
-	fmt::fprintln(conn)!;
 
 	let buf = strio::dynamic();
 	defer io::close(&buf)!;
 
-	for (let n = 0; true; n += 1) match (bufio::scanline(conn)!) {
-	case io::EOF => break;
-	case let line: []u8 =>
-		// NB. Can't defer free(line), causes a use-after-free in
-		// fmt::fatal
-		let resp = strings::fromutf8(line)!;
-		let resp = strings::cut(resp, " ");
-		switch (resp.0) {
-		case "key" =>
-			if (flags & flag::ONE != 0 && n > 0) {
-				fmt::fatal("error: Ambiguous match");
+	for (let i = 0; true; i += 1) {
+		let key = match (client::next(&keys)) {
+		case let k: const str =>
+			if (one && i > 0) {
+				fmt::fatal("Error: ambiguous match");
 			};
-			write_item(&buf, resp.1, field)!;
-		case "error" =>
-			fmt::fatal("error:", resp.1);
-		case "end" =>
-			free(line);
-			break;
-		case =>
-			break;
+			yield k;
+		case let err: client::error =>
+			fmt::fatal("Error executing query:", client::strerror(err));
+		case void => break;
 		};
-		free(line);
+		match (field) {
+		case let field: str =>
+			const items = shlex::split(key)!;
+			defer strings::freeall(items);
+			const query = query::parse_items(items)!;
+			defer query::finish(&query);
+			for (let i = 0z; i < len(query.items); i += 1) {
+				let item = query.items[i];
+				if (item.key == field) {
+					fmt::fprintln(&buf, item.value)!;
+				};
+			};
+		case void =>
+			fmt::fprintln(&buf, key)!;
+		};
 	};
 
 	fmt::print(strio::string(&buf))!;
