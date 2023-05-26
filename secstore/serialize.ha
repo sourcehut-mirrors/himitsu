@@ -60,7 +60,7 @@ fn write_private(
 
 	const idstr = uuid::encodestr(id);
 
-	let buf = path::init();
+	let buf = path::init()!;
 	path::set(&buf, store.dir, idstr)!;
 
 	const file = os::open(path::string(&buf))?;

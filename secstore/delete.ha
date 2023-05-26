@@ -26,11 +26,11 @@ export fn del(store: *secstore, q: *query::query) (void | locked) = {
 
 	io::close(store.index)!;
 
-	let buf = path::init();
+	let buf = path::init()!;
 	path::set(&buf, store.dir, "index")!;
 	const oldpath = strings::dup(path::string(&buf));
 	defer free(oldpath);
-	path::add(&buf, "..", "index.1")!;
+	path::push(&buf, "..", "index.1")!;
 
 	const index = os::create(path::string(&buf), 0o600)!;
 	for (let i = 0z; i < len(store.entries); i += 1) {
@@ -42,7 +42,7 @@ export fn del(store: *secstore, q: *query::query) (void | locked) = {
 };
 
 fn delkeys(store: *secstore, entry: *entry) void = {
-	let buf = path::init();
+	let buf = path::init()!;
 
 	for (let i = 0z; i < len(entry.pairs); i += 1) {
 		const pair = &entry.pairs[i];

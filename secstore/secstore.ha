@@ -61,7 +61,7 @@ fn createat(passphrase: []u8, dir: const str) (secstore | error) = {
 
 	const verify = key[32..];
 
-	let buf = path::init();
+	let buf = path::init()!;
 	path::set(&buf, dir, "key")!;
 	const keyfile = os::create(path::string(&buf), 0o600)?;
 	defer io::close(keyfile)!;
@@ -211,7 +211,7 @@ export fn open() (secstore | error) = {
 };
 
 fn openat(dir: str) (secstore | error) = {
-	let buf = path::init();
+	let buf = path::init()!;
 	path::set(&buf, dir, "index")!;
 
 	const index = os::open(path::string(&buf), fs::flags::RDWR)?;
@@ -226,7 +226,7 @@ fn openat(dir: str) (secstore | error) = {
 
 // Unlocks the keystore using the given passphrase.
 export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
-	let buf = path::init();
+	let buf = path::init()!;
 	path::set(&buf, store.dir, "key")!;
 
 	const input = os::open(path::string(&buf))?;
@@ -423,7 +423,7 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 	const id = uuid::generate();
 	const idstr = uuid::encodestr(id);
 
-	let buf = path::init();
+	let buf = path::init()!;
 	path::set(&buf, store.dir, idstr)!;
 
 	const file = os::create(path::string(&buf), 0o600)!;

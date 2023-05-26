@@ -47,7 +47,7 @@ fn bind(
 		yield dir;
 	};
 
-	let buf = path::init();
+	let buf = path::init()!;
 	path::set(&buf, statedir, "himitsu")!;
 	const sockpath = path::string(&buf);
 
@@ -102,7 +102,7 @@ fn shutdown(serv: *server) void = {
 	free(serv.clients);
 	free(serv.pollfd);
 
-	let buf = path::init();
+	let buf = path::init()!;
 	path::set(&buf, dirs::runtime()!, "himitsu")!;
 	os::remove(path::string(&buf))!;
 

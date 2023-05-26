@@ -74,7 +74,7 @@ export fn main() void = {
 		};
 	};
 
-	let buf = path::init();
+	let buf = path::init()!;
 	// TODO: Bubble up dirs::runtime errors
 	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
 	let conn = match (unix::connect(sockpath)) {

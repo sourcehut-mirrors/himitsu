@@ -122,7 +122,7 @@ export fn main() void = {
 };
 
 fn writeconf() void = {
-	let buf = path::init();
+	let buf = path::init()!;
 	const confdir = dirs::config("himitsu");
 	match (os::mkdirs(confdir, 0o755)) {
 	case let err: fs::error =>
@@ -196,7 +196,7 @@ fn reencrypt(tty: io::handle) void = {
 
 // check whether himitsud is running
 fn checkhimitsud() bool = {
-	let buf = path::init();
+	let buf = path::init()!;
 	let rtdir = match (dirs::runtime()) {
 	case let e: fs::error =>
 		fmt::fatal("error getting runtime dir: ", fs::strerror(e));
