@@ -11,9 +11,10 @@ pairs, any of which may be secret.
 
 ## USAGE
 
-To initialize a new Himitsu key store, run *himitsu-store*(1). This will create a
-new key store, and a new configuration file (see *himitsu.ini*(5)). To begin
-servicing user requests, the Himitsu daemon must be running: see *himitsud*(1).
+To initialize a new Himitsu key store, run *himitsu-store*(1) with the -i
+option. This will create a new key store, and a new configuration file (see
+*himitsu.ini*(5)). To begin servicing user requests, the Himitsu daemon must be
+running: see *himitsud*(1).
 
 The *hiq*(1) command is provided for querying the key store.
 

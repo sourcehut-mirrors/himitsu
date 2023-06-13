@@ -23,16 +23,20 @@ export fn main() void = {
 
 	const cmd = getopt::parse(os::args,
 		"himitsu-store",
+		('i', "Initialize the secstore."),
 		('r', "Change master key and re-encrypt the secstore."),
 	);
 	defer getopt::finish(&cmd);
 
 	let re = false;
+	let initstore = false;
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
 		const opt = cmd.opts[i];
 		switch (opt.0) {
 		case 'r' =>
 			re = true;
+		case 'i' =>
+			initstore = true;
 		};
 	};
 
@@ -51,11 +55,20 @@ export fn main() void = {
 	const tty = &bufio::buffered(tty, rbuf, wbuf);
 	defer io::close(tty)!;
 
-	if (re) {
-		reencrypt(tty);
+	if (initstore) {
+		init(&termios, tty);
 		return;
 	};
 
+	if (re) {
+		reencrypt(&termios, tty);
+		return;
+	};
+
+	fmt::fatalf("No action specified");
+};
+
+fn init(termios: *tty::termios, tty: io::handle) void = {
 	match (secstore::open()) {
 	case let store: secstore::secstore =>
 		secstore::close(&store);
@@ -82,7 +95,7 @@ export fn main() void = {
 		};
 	};
 
-	tty::noecho(&termios)!;
+	tty::noecho(termios)!;
 
 	fmt::errorln("Initializing a new himitsu secstore.")!;
 	fmt::error("Please enter a passphrase: ")!;
@@ -121,6 +134,7 @@ export fn main() void = {
 	writeconf();
 };
 
+
 fn writeconf() void = {
 	let buf = path::init()!;
 	const confdir = dirs::config("himitsu");
@@ -155,7 +169,7 @@ fn writeconf() void = {
 	fmt::println("Wrote config file to", confpath)!;
 };
 
-fn reencrypt(tty: io::handle) void = {
+fn reencrypt(termios: *tty::termios, tty: io::handle) void = {
 	fmt::errorln("Re-encrypting the secstore.\n")!;
 	fmt::errorln("There are not many safeguards in effect, so please read carefully.")!;
 	fmt::errorln()!;
@@ -167,6 +181,7 @@ fn reencrypt(tty: io::handle) void = {
 		dirs::data(""),
 	)!;
 
+	tty::noecho(termios)!;
 	fmt::error("Please enter your passphrase: ")!;
 	const pass = match (bufio::scanline(tty)!) {
 	case let buf: []u8 =>

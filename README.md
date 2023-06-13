@@ -28,7 +28,7 @@ You also need a prompter. Try one of these:
 Begin by initializing a keystore:
 
 ```
-$ himitsu-store
+$ himitsu-store -i
 ```
 
 Then fire up the daemon:

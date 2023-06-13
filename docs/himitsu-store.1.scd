@@ -2,23 +2,25 @@ himitsu-store(1)
 
 # NAME
 
-himitsu-store - initialize a new *himitsu*(7) key store
+himitsu-store - manages the *himitsu*(7) key store
 
 # SYNOPSIS
 
-*himitsu-store [-r]*
+*himitsu-store [-ir]*
 
 # DESCRIPTION
 
-*himitsu-store* will initialize a new *himitsu*(7) key store at
-$XDG_DATA_HOME/himitsu and create a new *himitsu.ini*(5) configuration file at
-$XDG_CONFIG_HOME/himitsu/himitsu.ini.
+*himitsu-store* manages the *himitsu*(7) key store at $XDG_DATA_HOME/himitsu.
 
 ## OPTIONS
 
+*-i*
+	Creates a new *himitsu*(7) key store at $XDG_DATA_HOME/himitsu
+	and a new *himitsu.ini*(5) configuration file at
+	$XDG_CONFIG_HOME/himitsu/himitsu.ini
+
 *-r*
-	Instead of initializing a new key store, it will re-encrypt the current
-	store with a newly generated master key.
+	Re-encrypts the current store with a newly generated master key.
 
 # SEE ALSO
 
