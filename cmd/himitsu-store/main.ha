@@ -22,7 +22,7 @@ prompter=hiprompt-gtk`;
 export fn main() void = {
 
 	const cmd = getopt::parse(os::args,
-		"himitsu-init",
+		"himitsu-store",
 		('r', "Change master key and re-encrypt the secstore."),
 	);
 	defer getopt::finish(&cmd);

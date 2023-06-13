@@ -15,7 +15,7 @@ $XDG_RUNTIME_DIR/himitsu which accepts commands using the *himitsu-ipc*(5)
 protocol. Users will generally use *hiq*(1) or other clients to interact with
 it.
 
-The user must have initialized a key store with *himitsu-init*(1) before running
+The user must have initialized a key store with *himitsu-store*(1) before running
 the daemon.
 
 For a general introduction to Himitsu, see *himitsu*(7).
@@ -29,7 +29,7 @@ The following options are recognized by *himitsud*:
 
 # SEE ALSO
 
-*himitsu*(7), *himitsu-init*(1), *hiq*(1), *himitsu.ini*(5), *himitsu-ipc*(5),
+*himitsu*(7), *himitsu-store*(1), *hiq*(1), *himitsu.ini*(5), *himitsu-ipc*(5),
 *himitsu-prompter*(5)
 
 # AUTHORS

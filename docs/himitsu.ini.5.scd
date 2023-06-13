@@ -12,7 +12,7 @@ brackets (e.g. [himitsud]) on a line. Following each section, a set of key/value
 pairs belonging to that section are provided. The keys are separated from the
 values by an equal symbol (*=*).
 
-The default configuration file is installed by *himitsu-init*(1).
+The default configuration file is installed by *himitsu-store*(1).
 
 # APPLICATION USAGE
 

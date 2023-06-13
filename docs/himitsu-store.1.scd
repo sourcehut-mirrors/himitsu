@@ -1,16 +1,16 @@
-himitsu-init(1)
+himitsu-store(1)
 
 # NAME
 
-himitsu-init - initialize a new *himitsu*(7) key store
+himitsu-store - initialize a new *himitsu*(7) key store
 
 # SYNOPSIS
 
-*himitsu-init [-r]*
+*himitsu-store [-r]*
 
 # DESCRIPTION
 
-*himitsu-init* will initialize a new *himitsu*(7) key store at
+*himitsu-store* will initialize a new *himitsu*(7) key store at
 $XDG_DATA_HOME/himitsu and create a new *himitsu.ini*(5) configuration file at
 $XDG_CONFIG_HOME/himitsu/himitsu.ini.
 

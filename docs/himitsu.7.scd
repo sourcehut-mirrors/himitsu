@@ -11,7 +11,7 @@ pairs, any of which may be secret.
 
 ## USAGE
 
-To initialize a new Himitsu key store, run *himitsu-init*(1). This will create a
+To initialize a new Himitsu key store, run *himitsu-store*(1). This will create a
 new key store, and a new configuration file (see *himitsu.ini*(5)). To begin
 servicing user requests, the Himitsu daemon must be running: see *himitsud*(1).
 
@@ -76,7 +76,7 @@ install "himitsu-ssh" and consult *himitsu-ssh*(7) for usage details.
 
 # SEE ALSO
 
-*himitsu-init*(1), *himitsud*(1), *hiq*(1), *himitsu.ini*(5), *himitsu-ipc*(5),
+*himitsu-store*(1), *himitsud*(1), *hiq*(1), *himitsu.ini*(5), *himitsu-ipc*(5),
 *himitsu-prompter*(5)
 
 # AUTHORS
