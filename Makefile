@@ -59,7 +59,7 @@ himitsu.7: docs/himitsu.7.scd
 	$(SCDOC) <$< >$@
 
 clean:
-	rm -f himitsud himitsu-init hiq
+	rm -f himitsud himitsu-init hiq $(DOCS)
 
 install:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
