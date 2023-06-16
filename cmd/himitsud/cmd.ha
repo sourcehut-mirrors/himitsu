@@ -239,6 +239,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 
 	let buf = bufio::dynamic(io::mode::WRITE);
+	defer io::close(&buf)!;
 	for (let i = 0z; i < len(matches); i += 1) {
 		fmt::fprint(&buf, "key ")?;
 		secstore::write(serv.store, &buf, matches[i], decrypt)?;

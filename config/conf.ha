@@ -40,6 +40,7 @@ export fn load() (config | error) = {
 	let conf = config { ... };
 
 	const scanner = ini::scan(file);
+	defer ini::finish(&scanner);
 	for (true) {
 		const entry = match (ini::next(&scanner)?) {
 		case let entry: ini::entry =>
