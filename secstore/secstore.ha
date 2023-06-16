@@ -214,7 +214,7 @@ fn openat(dir: str) (secstore | error) = {
 	let buf = path::init()!;
 	path::set(&buf, dir, "index")!;
 
-	const index = os::open(path::string(&buf), fs::flags::RDWR)?;
+	const index = os::open(path::string(&buf), fs::flag::RDWR)?;
 	return secstore {
 		key = void,
 		state = state::HARD_LOCKED,

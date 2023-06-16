@@ -34,8 +34,8 @@ export fn main() void = {
 	};
 	defer secstore::close(&store);
 
-	signal::block(signal::SIGINT, signal::SIGTERM);
-	const sigfd = signal::signalfd(signal::SIGINT, signal::SIGTERM)!;
+	signal::block(signal::sig::INT, signal::sig::TERM);
+	const sigfd = signal::signalfd(signal::sig::INT, signal::sig::TERM)!;
 	defer io::close(sigfd)!;
 
 	const conf = match (config::load()) {

@@ -64,7 +64,7 @@ fn bind(
 	case let err: net::error =>
 		log::fatal(net::strerror(err));
 	};
-	const sock = match (unix::listen(sockpath, net::sockflags::NOCLOEXEC)) {
+	const sock = match (unix::listen(sockpath, net::sockflag::NOCLOEXEC)) {
 	case let l: net::socket =>
 		yield l;
 	case let err: net::error =>
