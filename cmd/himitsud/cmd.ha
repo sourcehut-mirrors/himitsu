@@ -182,6 +182,9 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 
 	let prompter: (prompt::prompter | void) = void;
+	defer if (prompter is prompt::prompter) {
+		prompt::close(&(prompter: prompt::prompter))!;
+	};
 	if (serv.store.state == secstore::state::HARD_LOCKED) {
 		const new = prompt::newprompter(serv.conf.prompter[0],
 			serv.conf.prompter[1..])?;
@@ -189,9 +192,6 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		if (!prompt::wait_unlock(&new, serv.store)?) {
 			writefmt(client, "error Failed to unlock");
 			return;
-		};
-		if (!decrypt) {
-			prompt::close(&new)?;
 		};
 		prompter = new;
 	};
@@ -214,6 +214,8 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	if (len(matches) > 0 && decrypt) {
 		const prompter = match (prompter) {
 		case let p: prompt::prompter =>
+			// Take the ownership since prompt::wait will also close it
+			prompter = void;
 			yield p;
 		case void =>
 			yield prompt::newprompter(serv.conf.prompter[0],
