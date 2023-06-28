@@ -109,6 +109,9 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	let buf = bufio::dynamic(io::mode::WRITE);
 
 	let prompter: (prompt::prompter | void) = void;
+	defer if (prompter is prompt::prompter) {
+		prompt::close(&(prompter: prompt::prompter))!;
+	};
 	if (serv.store.state != secstore::state::UNLOCKED) {
 		const new = prompt::newprompter(serv.conf.prompter[0],
 			serv.conf.prompter[1..])?;
@@ -117,6 +120,7 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 			writefmt(client, "error Failed to unlock");
 			return;
 		};
+		prompter = new;
 	};
 
 	const iter = secstore::query(serv.store, &q);
@@ -137,6 +141,7 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	if (len(matches) > 0) {
 		const prompter = match (prompter) {
 		case let p: prompt::prompter =>
+			prompter = void;
 			yield p;
 		case void =>
 			yield prompt::newprompter(serv.conf.prompter[0],
@@ -152,12 +157,6 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		};
 
 		secstore::del(serv.store, &q)!;
-	} else {
-		match (prompter) {
-		case let p: prompt::prompter =>
-			prompt::close(&p)?;
-		case void => yield;
-		};
 	};
 
 	fmt::fprintln(&buf, "end")?;
