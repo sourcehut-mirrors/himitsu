@@ -2,6 +2,7 @@
 /himitsu-store
 /hiq
 /hiprompt-tty
+/hiboot
 .teststore/
 *.1
 *.5

@@ -12,7 +12,7 @@ MANDIR=$(SHAREDIR)/man
 HARESRCDIR=$(SRCDIR)/hare
 THIRDPARTYDIR=$(HARESRCDIR)/third-party
 
-all: himitsud himitsu-store hiq hiprompt-tty docs
+all: himitsud himitsu-store hiq hiprompt-tty hiboot docs
 
 himitsud:
 	hare build -o $@ cmd/$@/
@@ -24,6 +24,9 @@ hiprompt-tty:
 	hare build -o $@ cmd/$@/
 
 hiq:
+	hare build -o $@ cmd/$@/
+
+hiboot:
 	hare build -o $@ cmd/$@/
 
 check:
@@ -66,12 +69,14 @@ clean:
 
 install:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/sbin
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
 	mkdir -p $(DESTDIR)$(MANDIR)/man1
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man7
 	install -m755 himitsud himitsu-store hiq hiprompt-tty $(DESTDIR)$(PREFIX)/bin
+	install -m755 hiboot $(DESTDIR)$(PREFIX)/sbin
 	install -m644 himitsu/client/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	install -m644 himitsu/query/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
 	install -m644 himitsud.1 $(DESTDIR)$(MANDIR)/man1/himitsud.1
@@ -85,7 +90,10 @@ install:
 uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/himitsud \
 	      $(DESTDIR)$(PREFIX)/bin/himitsu-store \
-	      $(DESTDIR)$(PREFIX)/bin/hiq
+	      $(DESTDIR)$(PREFIX)/bin/hiq \
+	      $(DESTDIR)$(PREFIX)/bin/hiprompt-tty \
+	      $(DESTDIR)$(PREFIX)/sbin/hiboot
 	rm -rf $(DESTDIR)$(THIRDPARTYDIR)/himitsu
 
-.PHONY: all himitsud himitsu-store hiprompt-tty hiq check clean install uninstall docs
+.PHONY: all himitsud himitsu-store hiprompt-tty hiq hiboot
+.PHONY: check clean install uninstall docs
