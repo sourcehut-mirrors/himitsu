@@ -12,12 +12,15 @@ MANDIR=$(SHAREDIR)/man
 HARESRCDIR=$(SRCDIR)/hare
 THIRDPARTYDIR=$(HARESRCDIR)/third-party
 
-all: himitsud himitsu-store hiq docs
+all: himitsud himitsu-store hiq hiprompt-tty docs
 
 himitsud:
 	hare build -o $@ cmd/$@/
 
 himitsu-store:
+	hare build -o $@ cmd/$@/
+
+hiprompt-tty:
 	hare build -o $@ cmd/$@/
 
 hiq:
@@ -68,7 +71,7 @@ install:
 	mkdir -p $(DESTDIR)$(MANDIR)/man1
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man7
-	install -m755 himitsud himitsu-store hiq $(DESTDIR)$(PREFIX)/bin
+	install -m755 himitsud himitsu-store hiq hiprompt-tty $(DESTDIR)$(PREFIX)/bin
 	install -m644 himitsu/client/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	install -m644 himitsu/query/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
 	install -m644 himitsud.1 $(DESTDIR)$(MANDIR)/man1/himitsud.1
@@ -85,4 +88,4 @@ uninstall:
 	      $(DESTDIR)$(PREFIX)/bin/hiq
 	rm -rf $(DESTDIR)$(THIRDPARTYDIR)/himitsu
 
-.PHONY: all himitsud himitsu-store hiq check clean install uninstall docs
+.PHONY: all himitsud himitsu-store hiprompt-tty hiq check clean install uninstall docs

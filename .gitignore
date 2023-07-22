@@ -1,6 +1,7 @@
 /himitsud
 /himitsu-store
 /hiq
+/hiprompt-tty
 .teststore/
 *.1
 *.5
