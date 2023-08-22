@@ -9,7 +9,8 @@ use net;
 use path;
 use shlex;
 use strings;
-use strio;
+use memio;
+use encoding::utf8;
 
 // Query operations supported by Himitsu.
 export type operation = enum uint {
@@ -55,7 +56,7 @@ export fn connect() (net::socket | error) = {
 
 export type keyiter = struct {
 	conn: net::socket,
-	buf: strio::stream,
+	buf: memio::stream,
 };
 
 // Executes a query using a Himitsu connection, returning an iterator which
@@ -67,7 +68,7 @@ export fn query(
 	q: *query::query,
 	flags: flags,
 ) (keyiter | error) = {
-	const buf = bufio::dynamic(io::mode::WRITE);
+	const buf = memio::dynamic();
 	defer io::close(&buf)!;
 
 	switch (op) {
@@ -87,18 +88,18 @@ export fn query(
 
 	query::unparse(&buf, q)!;
 
-	io::writeall(conn, bufio::buffer(&buf))?;
+	io::writeall(conn, memio::buffer(&buf))?;
 
 	return keyiter {
 		conn = conn,
-		buf = strio::dynamic(),
+		buf = memio::dynamic(),
 	};
 };
 
 // Returns the next key from a key iterator, or void if no further keys are
 // provided.
 export fn next(iter: *keyiter) (const str | void | error) = {
-	strio::reset(&iter.buf);
+	memio::reset(&iter.buf);
 	match (bufio::scanline(iter.conn)?) {
 	case let buf: []u8 =>
 		io::writeall(&iter.buf, buf)!;
@@ -107,7 +108,12 @@ export fn next(iter: *keyiter) (const str | void | error) = {
 		// XXX: This might be an error
 		return;
 	};
-	const string = strio::string(&iter.buf);
+	const string = match (memio::string(&iter.buf)) {
+	case let s: str =>
+		yield s;
+	case utf8::invalid =>
+		return errors::invalid: io::error;
+	};
 	if (string == "end") {
 		io::close(&iter.buf)!;
 		return;

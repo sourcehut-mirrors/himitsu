@@ -9,7 +9,7 @@ use io;
 use os;
 use path;
 use shlex;
-use strio;
+use memio;
 use uuid;
 
 // Serializes a secstore entry to the given I/O handle, returning the number of
@@ -39,10 +39,10 @@ export fn write(
 				// XXX: Maybe shlex::quote should come with a
 				// stream-oriented interface
 				fmt::fprint(sink, "=")?;
-				let buf = strio::dynamic();
+				let buf = memio::dynamic();
 				defer io::close(&buf)!;
 				write_private(store, &buf, u)?;
-				shlex::quote(sink, strio::string(&buf))?;
+				shlex::quote(sink, memio::string(&buf)!)?;
 			};
 		};
 		if (i + 1 < len(ent.pairs)) {

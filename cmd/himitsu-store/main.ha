@@ -6,6 +6,7 @@ use errors;
 use fmt;
 use fs;
 use io;
+use memio;
 use os;
 use path;
 use secstore;
@@ -50,9 +51,9 @@ export fn main() void = {
 	const termios = tty::termios_query(tty)!;
 	defer tty::termios_restore(&termios);
 
-	let rbuf: [os::BUFSIZ]u8 = [0...];
-	let wbuf: [os::BUFSIZ]u8 = [0...];
-	const tty = &bufio::buffered(tty, rbuf, wbuf);
+	let rbuf: [os::BUFSZ]u8 = [0...];
+	let wbuf: [os::BUFSZ]u8 = [0...];
+	const tty = &bufio::init(tty, rbuf, wbuf);
 	defer io::close(tty)!;
 
 	if (initstore) {

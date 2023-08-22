@@ -1,4 +1,4 @@
-use bufio;
+use memio;
 use errors;
 use fmt;
 use fs;
@@ -95,18 +95,18 @@ fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	defer query::finish(&q);
 	// TODO: Prompt user to fill in incomplete keys
 	let entry = secstore::add(serv.store, &q)!;
-	let buf = bufio::dynamic(io::mode::WRITE);
+	let buf = memio::dynamic();
 	fmt::fprint(&buf, "key ")?;
 	secstore::write(serv.store, &buf, entry, false)?;
 	fmt::fprintln(&buf, "\nend")?;
-	write(client, bufio::buffer(&buf));
+	write(client, memio::buffer(&buf));
 };
 
 fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const q = query::parse_items(args[1..])?;
 	defer query::finish(&q);
 
-	let buf = bufio::dynamic(io::mode::WRITE);
+	let buf = memio::dynamic();
 
 	let prompter: (prompt::prompter | void) = void;
 	defer if (prompter is prompt::prompter) {
@@ -160,7 +160,7 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 
 	fmt::fprintln(&buf, "end")?;
-	writebuf(client, bufio::buffer(&buf));
+	writebuf(client, memio::buffer(&buf));
 };
 
 fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
@@ -239,7 +239,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		};
 	};
 
-	let buf = bufio::dynamic(io::mode::WRITE);
+	let buf = memio::dynamic();
 	defer io::close(&buf)!;
 	for (let i = 0z; i < len(matches); i += 1) {
 		fmt::fprint(&buf, "key ")?;
@@ -248,7 +248,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 	fmt::fprintln(&buf, "end")?;
 
-	writebuf(client, bufio::buffer(&buf));
+	writebuf(client, memio::buffer(&buf));
 };
 
 fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {

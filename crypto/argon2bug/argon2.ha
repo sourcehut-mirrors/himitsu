@@ -2,7 +2,7 @@
 // (c) 2022 Alexey Yerin <yyp@disroot.org>
 // (c) 2021-2022 Armin Preiml <apreiml@strohwolke.at>
 // (c) 2021-2022 Drew DeVault <sir@cmpwn.com>
-use bufio;
+use memio;
 use bytes;
 use crypto::blake2b;
 use crypto::math;
@@ -16,11 +16,11 @@ use types;
 export def VERSION: u8 = 0x13;
 
 // Number of u64 elements of one block.
-export def BLOCKSIZE: u32 = 128;
+export def BLOCKSZE: u32 = 128;
 
 def SLICES: size = 4;
 
-type block64 = [BLOCKSIZE]u64;
+type block64 = [BLOCKSZE]u64;
 
 const zeroblock: block64 = [0...];
 
@@ -52,9 +52,9 @@ type mode = enum {
 // number of 1024-byte blocks the implementation shall allocate for you. If the
 // caller wants to manage the allocation itself, provide a []u8 instead. The
 // length of this slice must be at least 8 times the value of 'parallel' in
-// blocks, and must be a multiple of [[BLOCKSIZE]]. To have the implementation
+// blocks, and must be a multiple of [[BLOCKSZE]]. To have the implementation
 // allocate 64 KiB, set 'mem' to 64. To use the same amount of caller-provided
-// memory, provide a slice of length 64 * [[BLOCKSIZE]].
+// memory, provide a slice of length 64 * [[BLOCKSZE]].
 export type config = struct {
 	mem: (u32 | []u64),
 	parallel: u32,
@@ -165,21 +165,21 @@ fn argon2(
 
 	let mem: []u64 = match (cfg.mem) {
 	case let mem: []u64 =>
-		assert(len(mem) >= 8 * cfg.parallel * BLOCKSIZE
-			&& len(mem) % BLOCKSIZE == 0
-			&& len(mem) / BLOCKSIZE <= types::U32_MAX);
+		assert(len(mem) >= 8 * cfg.parallel * BLOCKSZE
+			&& len(mem) % BLOCKSZE == 0
+			&& len(mem) / BLOCKSZE <= types::U32_MAX);
 		yield mem;
 	case let memsize: u32 =>
 		assert(memsize >= 8 * cfg.parallel
 			&& memsize <= types::U32_MAX);
 
-		let membytes = memsize * BLOCKSIZE * 8;
+		let membytes = memsize * BLOCKSZE * 8;
 		let mem: []u64 = alloc([0...], membytes);
 		yield mem[..membytes / 8];
 	};
 	// round down memory to nearest multiple of 4 times parallel
-	mem = mem[..len(mem) - len(mem) % (4 * cfg.parallel * BLOCKSIZE)];
-	const memsize = (len(mem) / BLOCKSIZE): u32;
+	mem = mem[..len(mem) - len(mem) % (4 * cfg.parallel * BLOCKSZE)];
+	const memsize = (len(mem) / BLOCKSZE): u32;
 
 	let h0: [64]u8 = [0...];
 	inithash(&h0, len(dest): u32, password, salt, cfg, mode, memsize);
@@ -238,12 +238,12 @@ fn argon2(
 };
 
 fn block(ctx: *context, i: size, j: size) []u64 = {
-	let index = (ctx.cols * i + j) * BLOCKSIZE;
-	return ctx.mem[index..index + BLOCKSIZE];
+	let index = (ctx.cols * i + j) * BLOCKSZE;
+	return ctx.mem[index..index + BLOCKSZE];
 };
 
 fn blocku8(ctx: *context, i: size, j: size) []u8 = {
-	return (block(ctx, i, j): *[*]u8)[..BLOCKSIZE * size(u64)];
+	return (block(ctx, i, j): *[*]u8)[..BLOCKSZE * size(u64)];
 };
 
 fn refblock(cfg: *config, ctx: *context, seed: u64, i: size, j: size) []u64 = {
@@ -336,7 +336,7 @@ fn varhash(dest: []u8, block: []u8) void = {
 	const r = divceil(len(dest): u32, 32) - 2;
 	let v: [64]u8 = [0...];
 
-	let destbuf = bufio::fixed(dest, io::mode::WRITE);
+	let destbuf = memio::fixed(dest);
 
 	let h = blake2b::blake2b([], 64);
 	hash_leputu32(&h, len(dest): u32);
@@ -389,7 +389,7 @@ fn segproc(cfg: *config, ctx: *context, i: size, slice: size) void = {
 		ctx.seedsinit[0] = ctx.pass;
 		ctx.seedsinit[1] = i;
 		ctx.seedsinit[2] = slice;
-		ctx.seedsinit[3] = len(ctx.mem) / BLOCKSIZE;
+		ctx.seedsinit[3] = len(ctx.mem) / BLOCKSZE;
 		ctx.seedsinit[4] = cfg.passes;
 		ctx.seedsinit[5] = ctx.mode: u64;
 		ctx.seedsinit[6] = 0;
@@ -420,14 +420,14 @@ fn segproc(cfg: *config, ctx: *context, i: size, slice: size) void = {
 		const seed: u64 = if (dmodeseed) {
 			yield block(ctx, i, (j - 1) % ctx.cols)[0];
 		} else {
-			if (b % BLOCKSIZE == 0) {
+			if (b % BLOCKSZE == 0) {
 				ctx.seedsinit[6] += 1;
 				compress(ctx.seedblock, ctx.seedsinit,
 					zeroblock, false);
 				compress(ctx.seedblock, ctx.seedblock,
 					zeroblock, false);
 			};
-			yield ctx.seedblock[b % BLOCKSIZE];
+			yield ctx.seedblock[b % BLOCKSZE];
 		};
 		compress(block(ctx, i, j), block(ctx, i, (j - 1) % ctx.cols),
 				refblock(cfg, ctx, seed, i, j), ctx.pass > 0);

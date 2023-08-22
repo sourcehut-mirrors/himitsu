@@ -187,7 +187,7 @@ fn dispatch_client(serv: *server, client: *client) void = {
 };
 
 fn client_readable(serv: *server, client: *client) void = {
-	let buf: [os::BUFSIZ]u8 = [0...];
+	let buf: [os::BUFSZ]u8 = [0...];
 	const z = match (io::read(client.sock, buf)) {
 	case let z: size =>
 		yield z;

@@ -4,6 +4,7 @@ use errors;
 use fmt;
 use fs;
 use io;
+use memio;
 use os::exec;
 use os;
 use secstore;

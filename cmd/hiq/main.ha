@@ -12,7 +12,7 @@ use os;
 use path;
 use shlex;
 use strings;
-use strio;
+use memio;
 use unix::tty;
 
 export fn main() void = {
@@ -77,7 +77,7 @@ export fn main() void = {
 			case let line: []u8 =>
 				// NB. Can't defer free(line), causes a
 				// use-after-free in fmt::fatal
-				const query = bufio::fixed(line, io::mode::READ);
+				const query = memio::fixed(line);
 				const query = match (query::parse(&query)) {
 				case let q: query::query =>
 					yield q;
@@ -118,7 +118,7 @@ fn send(
 		fmt::fatal("Error executing query:", client::strerror(err));
 	};
 
-	let buf = strio::dynamic();
+	let buf = memio::dynamic();
 	defer io::close(&buf)!;
 
 	for (let i = 0; true; i += 1) {
@@ -149,5 +149,5 @@ fn send(
 		};
 	};
 
-	fmt::print(strio::string(&buf))!;
+	fmt::print(memio::string(&buf)!)!;
 };

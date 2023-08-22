@@ -12,6 +12,7 @@ use fmt;
 use fs;
 use himitsu::query;
 use io;
+use memio;
 use os;
 use path;
 use shlex;
@@ -65,8 +66,8 @@ fn createat(passphrase: []u8, dir: const str) (secstore | error) = {
 	path::set(&buf, dir, "key")!;
 	const keyfile = os::create(path::string(&buf), 0o600)?;
 	defer io::close(keyfile)!;
-	let wbuf: [os::BUFSIZ]u8 = [0...];
-	const keyfile = &bufio::buffered(keyfile, [], wbuf);
+	let wbuf: [os::BUFSZ]u8 = [0...];
+	const keyfile = &bufio::init(keyfile, [], wbuf);
 	defer io::close(keyfile)!;
 
 	fmt::fprintf(keyfile, "argon2id:{}:{}:", KEY_MEM, KEY_PASSES)?;
@@ -114,7 +115,7 @@ export fn reencrypt(passphrase: []u8) (void | error) = {
 	for (true) {
 		const item = match (next(&oldstore, &iter)) {
 		case let item: *entry =>
-			let buf = bufio::dynamic(io::mode::RDWR);
+			let buf = memio::dynamic();
 			defer io::close(&buf)!;
 			write(&oldstore, &buf, item, true)!;
 
@@ -231,8 +232,8 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 
 	const input = os::open(path::string(&buf))?;
 	defer io::close(input)!;
-	let rbuf: [os::BUFSIZ]u8 = [0...];
-	const input = &bufio::buffered(input, rbuf, []);
+	let rbuf: [os::BUFSZ]u8 = [0...];
+	const input = &bufio::init(input, rbuf, []);
 
 	const keydata = match (bufio::scanline(input)) {
 	case let buf: []u8 =>
@@ -344,7 +345,7 @@ fn loadv0key(key: []u8) keystore::key =
 	keystore::newkey(key[..32], "secstore")!;
 
 fn loadv1key(key: []u8, enckey: str) (keystore::key | error) = {
-	const buf = bufio::fixed(strings::toutf8(enckey), io::mode::READ);
+	const buf = memio::fixed(strings::toutf8(enckey));
 	const dec = base64::newdecoder(&base64::std_encoding, &buf);
 	let masterkey = match (secunbox(&dec, key)) {
 	case let b: []u8 =>
@@ -442,7 +443,7 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 fn add_index(store: *secstore, entry: *entry) void = {
 	assert(store.key is keystore::key);
 
-	let buf = bufio::dynamic(io::mode::WRITE);
+	let buf = memio::dynamic();
 	defer io::close(&buf)!;
 
 	for (let i = 0z; i < len(entry.pairs); i += 1) {
@@ -463,7 +464,7 @@ fn add_index(store: *secstore, entry: *entry) void = {
 		};
 	};
 
-	const buf = bufio::buffer(&buf);
+	const buf = memio::buffer(&buf);
 
 	const enc = base64::newencoder(&base64::std_encoding, store.index);
 	secbox(&enc, store.key as keystore::key, buf)!;
@@ -488,12 +489,12 @@ fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 		};
 		defer free(line);
 
-		const buf = bufio::fixed(line, io::mode::READ);
+		const buf = memio::fixed(line);
 		const dec = base64::newdecoder(&base64::std_encoding, &buf);
 
 		const plaintext = secunbox(&dec, key)?;
 
-		const buf = bufio::fixed(plaintext, io::mode::READ);
+		const buf = memio::fixed(plaintext);
 		const q = query::parse(&buf)!;
 		defer query::finish(&q);
 

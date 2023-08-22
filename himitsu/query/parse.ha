@@ -1,4 +1,4 @@
-use bufio;
+use memio;
 use encoding::utf8;
 use io;
 use regex;
@@ -107,8 +107,7 @@ export fn finish(q: *query) void = {
 	for (let i = 0z; i < len(cases); i += 1) {
 		const expected = cases[i].1;
 		const input = cases[i].0;
-		const input = bufio::fixed(strings::toutf8(input),
-			io::mode::READ);
+		const input = memio::fixed(strings::toutf8(input));
 
 		const result = parse(&input)!;
 		defer finish(&result);
