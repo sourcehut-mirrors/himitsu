@@ -92,10 +92,10 @@ fn unlock(ctx: *context, again: bool) void = {
 	defer tty::termios_restore(&termios);
 	tty::noecho(&termios)!;
 
-	const scan = memio::newscanner(ctx.tty, types::SZE_MAX);
-	defer memio::finish(&scan);
+	const scan = bufio::newscanner(ctx.tty, types::SIZE_MAX);
+	defer bufio::finish(&scan);
 
-	match (memio::scan_line(&scan)) {
+	match (bufio::scan_line(&scan)) {
 	case let line: const str =>
 		if (line == "") {
 			os::exit(1);
@@ -113,8 +113,8 @@ fn prompt(ctx: *context) void = {
 		mode = "deletion";
 	};
 
-	const scan = memio::newscanner(ctx.tty, types::SZE_MAX);
-	defer memio::finish(&scan);
+	const scan = bufio::newscanner(ctx.tty, types::SIZE_MAX);
+	defer bufio::finish(&scan);
 
 	fmt::fprintfln(ctx.tty,
 		"An application has requested {} of the following keys:",
@@ -126,7 +126,7 @@ fn prompt(ctx: *context) void = {
 
 	fmt::fprint(ctx.tty, "Proceed? [y/N] ")!;
 
-	const line = match (memio::scan_line(&scan)) {
+	const line = match (bufio::scan_line(&scan)) {
 	case let line: const str =>
 		yield line;
 	case =>
