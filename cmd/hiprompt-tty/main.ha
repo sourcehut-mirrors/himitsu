@@ -155,7 +155,7 @@ fn readline(ctx: *context, scan: *bufio::scanner, want: const str) const str = {
 };
 
 // Exit prompter with an internal error
-@noreturn fn fatal(args: fmt::formattable...) void = {
+fn fatal(args: fmt::formattable...) never = {
 	fmt::errorln(args...)!;
 	os::exit(127);
 };
