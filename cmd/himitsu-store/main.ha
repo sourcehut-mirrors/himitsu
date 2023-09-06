@@ -38,6 +38,8 @@ export fn main() void = {
 			re = true;
 		case 'i' =>
 			initstore = true;
+		case =>
+			fmt::fatal("Invalid command line option");
 		};
 	};
 

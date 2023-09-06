@@ -73,8 +73,12 @@ export fn main() void = {
 				ctx.mode = prompt::mode::DISCLOSE;
 			case "delete" =>
 				ctx.mode = prompt::mode::DELETE;
+			case =>
+				fmt::fatal("prompt expects either disclose or delete");
 			};
 			prompt(&ctx);
+		case =>
+			fmt::fatal("Unexpected command");
 		};
 	};
 };

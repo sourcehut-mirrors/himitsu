@@ -47,6 +47,8 @@ export fn main() void = {
 			field = cmd.opts[i].1;
 		case 'Q' =>
 			op = client::operation::QUIT;
+		case =>
+			fmt::fatal("Invalid command line option");
 		};
 	};
 
