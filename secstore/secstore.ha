@@ -235,7 +235,7 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	let rbuf: [os::BUFSZ]u8 = [0...];
 	const input = &bufio::init(input, rbuf, []);
 
-	const keydata = match (bufio::scanline(input)) {
+	const keydata = match (bufio::read_line(input)) {
 	case let buf: []u8 =>
 		yield strings::fromutf8(buf)!;
 	case io::EOF =>
@@ -481,7 +481,7 @@ fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 	keystore::read(store.key as keystore::key, key);
 
 	for (true) {
-		const line = match (bufio::scanline(store.index)?) {
+		const line = match (bufio::read_line(store.index)?) {
 		case let line: []u8 =>
 			yield line;
 		case io::EOF =>

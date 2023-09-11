@@ -76,7 +76,7 @@ fn init(termios: *tty::termios, tty: io::handle) void = {
 	case let store: secstore::secstore =>
 		secstore::close(&store);
 		fmt::error("A himitsu secstore already exists. Do you want to overwrite it? [y/N]: ")!;
-		const answer = match (bufio::scanline(tty)!) {
+		const answer = match (bufio::read_line(tty)!) {
 		case let buf: []u8 =>
 			yield buf;
 		case io::EOF =>
@@ -102,7 +102,7 @@ fn init(termios: *tty::termios, tty: io::handle) void = {
 
 	fmt::errorln("Initializing a new himitsu secstore.")!;
 	fmt::error("Please enter a passphrase: ")!;
-	const pass1 = match (bufio::scanline(tty)!) {
+	const pass1 = match (bufio::read_line(tty)!) {
 	case let buf: []u8 =>
 		yield buf;
 	case io::EOF =>
@@ -112,7 +112,7 @@ fn init(termios: *tty::termios, tty: io::handle) void = {
 	fmt::errorln()!;
 
 	fmt::error("Please enter the same passphrase again: ")!;
-	const pass2 = match (bufio::scanline(tty)!) {
+	const pass2 = match (bufio::read_line(tty)!) {
 	case let buf: []u8 =>
 		yield buf;
 	case io::EOF =>
@@ -186,7 +186,7 @@ fn reencrypt(termios: *tty::termios, tty: io::handle) void = {
 
 	tty::noecho(termios)!;
 	fmt::error("Please enter your passphrase: ")!;
-	const pass = match (bufio::scanline(tty)!) {
+	const pass = match (bufio::read_line(tty)!) {
 	case let buf: []u8 =>
 		yield buf;
 	case io::EOF =>

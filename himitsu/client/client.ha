@@ -100,7 +100,7 @@ export fn query(
 // provided.
 export fn next(iter: *keyiter) (const str | void | error) = {
 	memio::reset(&iter.buf);
-	match (bufio::scanline(iter.conn)?) {
+	match (bufio::read_line(iter.conn)?) {
 	case let buf: []u8 =>
 		io::writeall(&iter.buf, buf)!;
 		free(buf);

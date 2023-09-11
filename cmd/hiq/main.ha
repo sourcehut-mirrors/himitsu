@@ -74,7 +74,7 @@ export fn main() void = {
 			fmt::errorln("Enter new keys, one per line, then press ^d:")!;
 		};
 		for (true) {
-			match (bufio::scanline(os::stdin)!) {
+			match (bufio::read_line(os::stdin)!) {
 			case io::EOF => break;
 			case let line: []u8 =>
 				// NB. Can't defer free(line), causes a

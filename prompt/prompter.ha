@@ -35,7 +35,7 @@ export fn newprompter(command: str, args: []str) (prompter | error) = {
 	io::close(stdout.1)?;
 
 	fmt::fprintln(stdin.1, "version")?;
-	match (bufio::scanline(stdout.0)?) {
+	match (bufio::read_line(stdout.0)?) {
 	case io::EOF =>
 		return protoerror;
 	case let buf: []u8 =>
@@ -94,7 +94,7 @@ export fn wait_unlock(
 	prompt: *prompter,
 	store: *secstore::secstore,
 ) (bool | error) = {
-	for (true) match (bufio::scanline(prompt.stdout)?) {
+	for (true) match (bufio::read_line(prompt.stdout)?) {
 	case io::EOF =>
 		break;
 	case let buf: []u8 =>
