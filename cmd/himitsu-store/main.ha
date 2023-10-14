@@ -27,11 +27,13 @@ export fn main() void = {
 		"himitsu-store",
 		('i', "Initialize the secstore."),
 		('r', "Change master key and re-encrypt the secstore."),
+		('c', "Change the master password"),
 	);
 	defer getopt::finish(&cmd);
 
 	let re = false;
 	let initstore = false;
+	let chpw = false;
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
 		const opt = cmd.opts[i];
 		switch (opt.0) {
@@ -39,9 +41,15 @@ export fn main() void = {
 			re = true;
 		case 'i' =>
 			initstore = true;
+		case 'c' =>
+			chpw = true;
 		case =>
 			fmt::fatal("Invalid command line option");
 		};
+	};
+
+	if ((chpw || re) && initstore) {
+		fmt::fatal("Can not use -i with -c or -r");
 	};
 
 	const tty = match (tty::open()) {
@@ -65,8 +73,12 @@ export fn main() void = {
 	};
 
 	if (re) {
-		reencrypt(&termios, tty);
+		reencrypt(&termios, tty, chpw);
 		return;
+	};
+
+	if (chpw) {
+		fmt::fatalf("Changing password currently only works in combination with -r");
 	};
 
 	fmt::fatalf("No action specified");
@@ -173,7 +185,7 @@ fn writeconf() void = {
 	fmt::println("Wrote config file to", confpath)!;
 };
 
-fn reencrypt(termios: *tty::termios, tty: io::handle) void = {
+fn reencrypt(termios: *tty::termios, tty: io::handle, chpw: bool) void = {
 	fmt::errorln("Re-encrypting the secstore.\n")!;
 	fmt::errorln("Make sure that no himitsud process is currently running.")!;
 	fmt::errorln()!;
@@ -193,7 +205,37 @@ fn reencrypt(termios: *tty::termios, tty: io::handle) void = {
 		fmt::fatal("Error: Himitsud is running.");
 	};
 
-	match (reencrypt_move(pass)) {
+	const newpass: []u8 = if (!chpw) {
+		yield [];
+	} else {
+		fmt::error("Please enter your new passphrase: ")!;
+		const pass1 = match (bufio::read_line(tty)!) {
+		case let buf: []u8 =>
+			yield buf;
+		case io::EOF =>
+			fmt::fatal("Error: no passphrase supplied");
+		};
+		fmt::errorln()!;
+
+		fmt::error("Please enter the same passphrase again: ")!;
+		const pass2 = match (bufio::read_line(tty)!) {
+		case let buf: []u8 =>
+			yield buf;
+		case io::EOF =>
+			fmt::fatal("Error: no passphrase supplied");
+		};
+		defer free(pass2);
+		fmt::errorln()!;
+
+		if (!bytes::equal(pass1, pass2)) {
+			fmt::fatal("Error: passphrases do not match");
+		};
+
+		yield pass1;
+	};
+	defer free(newpass);
+
+	match (reencrypt_move(pass, if (len(newpass) != 0) newpass else pass)) {
 	case void =>
 		yield;
 	case let e: secstore::error =>
@@ -225,17 +267,17 @@ fn checkhimitsud() bool = {
 };
 
 // Generates a new master key and re-encrypts the secstore.
-export fn reencrypt_move(passphrase: []u8) (void | secstore::error)  = {
+export fn reencrypt_move(oldpass: []u8, newpass: []u8) (void | secstore::error)  = {
 	let olddir = strings::dup(dirs::data("himitsu"));
 	fmt::errorln("Unlocking store at", olddir)!;
 	let oldstore = secstore::openat(olddir)?;
-	secstore::unlock(&oldstore, passphrase)?;
+	secstore::unlock(&oldstore, oldpass)?;
 	let closed = false;
 	defer if (!closed) secstore::close(&oldstore);
 
 	let newdir = strings::dup(dirs::data("himitsu.new"));
 	fmt::errorln("Creating new store at", newdir)!;
-	let store = secstore::createat(passphrase, newdir)!;
+	let store = secstore::createat(newpass, newdir)!;
 	defer if (!closed) secstore::close(&store);
 
 	fmt::error("Copying all entries to the new store... ")!;

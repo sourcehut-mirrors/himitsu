@@ -6,7 +6,7 @@ himitsu-store - manages the *himitsu*(7) key store
 
 # SYNOPSIS
 
-*himitsu-store [-ir]*
+*himitsu-store [-irc]*
 
 # DESCRIPTION
 
@@ -21,6 +21,9 @@ himitsu-store - manages the *himitsu*(7) key store
 
 *-r*
 	Re-encrypts the current store with a newly generated master key.
+
+*-c*
+	Allows changing of the master password during re-encryption.
 
 # SEE ALSO
 
