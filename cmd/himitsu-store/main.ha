@@ -10,6 +10,7 @@ use memio;
 use os;
 use path;
 use secstore;
+use himitsu::query;
 use strings;
 use unix::tty;
 use getopt;
@@ -174,15 +175,8 @@ fn writeconf() void = {
 
 fn reencrypt(termios: *tty::termios, tty: io::handle) void = {
 	fmt::errorln("Re-encrypting the secstore.\n")!;
-	fmt::errorln("There are not many safeguards in effect, so please read carefully.")!;
+	fmt::errorln("Make sure that no himitsud process is currently running.")!;
 	fmt::errorln()!;
-	fmt::errorfln(
-		"Make sure that no himitsud process is currently running. The current\n"
-		"secstore will be moved to himitsu.old in our data directory:\n\n"
-		"\t{}\n\nIf the process fails in between, make sure that himitsu.new in the \n"
-		"data directory is removed and try again.\n",
-		dirs::data(""),
-	)!;
 
 	tty::noecho(termios)!;
 	fmt::error("Please enter your passphrase: ")!;
@@ -196,20 +190,15 @@ fn reencrypt(termios: *tty::termios, tty: io::handle) void = {
 	fmt::errorln()!;
 
 	if (checkhimitsud()) {
-		fmt::fatal("Error: Please make sure that himitsud is not running");
+		fmt::fatal("Error: Himitsud is running.");
 	};
 
-	match (secstore::reencrypt(pass)) {
-	case let e: secstore::error =>
-		fmt::fatal("Error:", secstore::strerror(e));
+	match (reencrypt_move(pass)) {
 	case void =>
 		yield;
+	case let e: secstore::error =>
+		fmt::fatal("Could not reencrypt:", secstore::strerror(e));
 	};
-
-	fmt::errorln(
-		"\nSecstore has been re-encrypted. If everything works,you may remove the\n"
-		"himitsu.old folder from your data directory"
-	)!;
 };
 
 // check whether himitsud is running
@@ -234,3 +223,75 @@ fn checkhimitsud() bool = {
 	defer io::close(conn)!;
 	return true;
 };
+
+// Generates a new master key and re-encrypts the secstore.
+export fn reencrypt_move(passphrase: []u8) (void | secstore::error)  = {
+	let olddir = strings::dup(dirs::data("himitsu"));
+	fmt::errorln("Unlocking store at", olddir)!;
+	let oldstore = secstore::openat(olddir)?;
+	secstore::unlock(&oldstore, passphrase)?;
+	let closed = false;
+	defer if (!closed) secstore::close(&oldstore);
+
+	let newdir = strings::dup(dirs::data("himitsu.new"));
+	fmt::errorln("Creating new store at", newdir)!;
+	let store = secstore::createat(passphrase, newdir)!;
+	defer if (!closed) secstore::close(&store);
+
+	fmt::error("Copying all entries to the new store... ")!;
+	const q = query::query { ... };
+	const iter = secstore::query(&oldstore, &q);
+	for (true) {
+		const item = match (secstore::next(&oldstore, &iter)) {
+		case let item: *secstore::entry =>
+			let buf = memio::dynamic();
+			defer io::close(&buf)!;
+			secstore::write(&oldstore, &buf, item, true)!;
+
+			io::seek(&buf, 0, io::whence::SET)!;
+
+			let iq = query::parse(&buf)!;
+			defer query::finish(&iq);
+			secstore::add(&store, &iq)!;
+			yield item;
+		case void =>
+			break;
+		};
+	};
+
+	secstore::close(&oldstore);
+	secstore::close(&store);
+	closed = true;
+
+	fmt::errorln("Done!")!;
+
+	let dir = strings::dup(dirs::data("himitsu"));
+	defer free(dir);
+	let dirold = strings::dup(dirs::data("himitsu.old"));
+	defer free(dirold);
+
+	fmt::errorln("Backing up current store to", dirold)!;
+	match (os::rename(dir, dirold)) {
+	case let e: fs::error =>
+		fmt::fatalf("Backup failed: {}", fs::strerror(e));
+	case =>
+		yield;
+	};
+
+	fmt::errorln("Moving new store to", dir)!;
+	let dirnew = strings::dup(dirs::data("himitsu.new"));
+	defer free(dirnew);
+	match (os::rename(dirnew, dir)) {
+	case let e: fs::error =>
+		fmt::fatalf("Moving himitsu.new to himitsu failed: {}",
+			fs::strerror(e));
+	case =>
+		yield;
+	};
+
+	fmt::errorln(
+		"\nSecstore has been re-encrypted. If everything works, you may remove",
+		dirold
+	)!;
+};
+

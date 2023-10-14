@@ -45,7 +45,9 @@ export fn remove() (void | fs::error) = {
 	return fs::rmdirall(os::cwd, dir);
 };
 
-fn createat(passphrase: []u8, dir: const str) (secstore | error) = {
+// Initializes a new secstore at 'dir' using the provided passphrase. The caller
+// should call [[close]] when they're done with it.
+export fn createat(passphrase: []u8, dir: const str) (secstore | error) = {
 	let key: [32 + 16]u8 = [0...];
 	defer bytes::zero(key);
 
@@ -97,64 +99,6 @@ fn createat(passphrase: []u8, dir: const str) (secstore | error) = {
 		dir = dir,
 		index = index,
 		entries = [],
-	};
-};
-
-// Generates a new master key and re-encrypts the secstore.
-export fn reencrypt(passphrase: []u8) (void | error) = {
-	let oldstore = openat(strings::dup(dirs::data("himitsu")))?;
-	unlock(&oldstore, passphrase)?;
-	let closed = false;
-	defer if (!closed) close(&oldstore);
-
-	let store = createat(passphrase, strings::dup(dirs::data("himitsu.new")))!;
-	defer if (!closed) close(&store);
-
-	const q = query::query { ... };
-	const iter = query(&oldstore, &q);
-	for (true) {
-		const item = match (next(&oldstore, &iter)) {
-		case let item: *entry =>
-			let buf = memio::dynamic();
-			defer io::close(&buf)!;
-			write(&oldstore, &buf, item, true)!;
-
-			io::seek(&buf, 0, io::whence::SET)!;
-
-			let iq = query::parse(&buf)!;
-			defer query::finish(&iq);
-			add(&store, &iq)!;
-			yield item;
-		case void =>
-			break;
-		};
-	};
-
-	close(&oldstore);
-	close(&store);
-	closed = true;
-
-	let dir = strings::dup(dirs::data("himitsu"));
-	defer free(dir);
-	let dirold = strings::dup(dirs::data("himitsu.old"));
-	defer free(dirold);
-
-	match (os::rename(dir, dirold)) {
-	case let e: fs::error =>
-		fmt::fatalf("Moving himitsu to himitsu.old failed: {}",
-			fs::strerror(e));
-	case =>
-		yield;
-	};
-
-	let dirnew = strings::dup(dirs::data("himitsu.new"));
-	defer free(dirnew);
-	match (os::rename(dirnew, dir)) {
-	case let e: fs::error =>
-		fmt::fatalf("Moving himitsu.new to himitsu failed: {}",
-			fs::strerror(e));
-	case =>
-		yield;
 	};
 };
 
@@ -211,7 +155,9 @@ export fn open() (secstore | error) = {
 	return openat(dir);
 };
 
-fn openat(dir: str) (secstore | error) = {
+// Opens the secstore at givien dir. The caller should call [[unlock]] to
+// decrypt it, and [[close]] when they're done with it.
+export fn openat(dir: str) (secstore | error) = {
 	let buf = path::init()!;
 	path::set(&buf, dir, "index")!;
 
