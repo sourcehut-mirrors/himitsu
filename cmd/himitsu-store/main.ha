@@ -60,7 +60,6 @@ export fn main() void = {
 	};
 
 	const termios = tty::termios_query(tty)!;
-	defer tty::termios_restore(&termios);
 
 	let rbuf: [os::BUFSZ]u8 = [0...];
 	let wbuf: [os::BUFSZ]u8 = [0...];
@@ -112,6 +111,7 @@ fn init(termios: *tty::termios, tty: io::handle) void = {
 	};
 
 	tty::noecho(termios)!;
+	defer tty::termios_restore(termios);
 
 	fmt::errorln("Initializing a new himitsu secstore.")!;
 	fmt::error("Please enter a passphrase: ")!;
@@ -191,6 +191,8 @@ fn reencrypt(termios: *tty::termios, tty: io::handle, chpw: bool) void = {
 	fmt::errorln()!;
 
 	tty::noecho(termios)!;
+	defer tty::termios_restore(termios);
+
 	fmt::error("Please enter your passphrase: ")!;
 	const pass = match (bufio::read_line(tty)!) {
 	case let buf: []u8 =>
