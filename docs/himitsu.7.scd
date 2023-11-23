@@ -25,6 +25,7 @@ separated by *=* (the "equal" symbol), e.g. key=value, and each key/value pair
 is separated with spaces. Keys and values are formatted using shell quoting
 syntax, such that spaces or other special characters (non-alphanumeric) may
 appear in keys or values if they are quoted according to shell quoting rules.
+Keys must be unique within an entry.
 
 Each key may be suffixed with a *!* to indicate that the value is secret.
 

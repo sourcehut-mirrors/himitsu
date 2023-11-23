@@ -4,6 +4,7 @@ use encoding::utf8;
 use io;
 use regex;
 use shlex;
+use sort::{sort};
 use strings;
 use fmt;
 
@@ -33,9 +34,25 @@ export type pair = struct {
 // Returned when the syntax of a query is not valid.
 export type invalid = !void;
 
+// Returned when keys are not unique within query.
+export type dupkeys = !void;
+
+// An error which may be returned form a query function
+export type error = !(invalid | dupkeys);
+
+// Returns the string representation of a query error.
+export fn strerror(err: error) str = {
+	match (err) {
+	case invalid =>
+		return "Invalid query";
+	case dupkeys =>
+		return "A query must not contain duplicate keys";
+	};
+};
+
 // Parses a query, returning its key/value pairs. The caller must pass the
 // return value to [[finish]] when they are done with it.
-export fn parse(in: io::handle) (query | invalid | io::error) = {
+export fn parse(in: io::handle) (query | error | io::error) = {
 	const data = io::drain(in)?;
 	const data = match (strings::fromutf8(data)) {
 	case let data: str =>
@@ -56,12 +73,15 @@ export fn parse(in: io::handle) (query | invalid | io::error) = {
 
 // Parses a list of key/value pairs which has already been split with shlex (or
 // a shell, for example when parsing a query from argv).
-export fn parse_items(items: []str) (query | invalid) = {
+export fn parse_items(items: []str) (query | error) = {
 	// XXX: Should do something about the case where the user specifies both
 	// ? and !
 	let query = query { ... };
 	let ok = false;
 	defer if (!ok) finish(&query);
+
+	let keys: []str = [];
+	defer free(keys);
 
 	for (let i = 0z; i < len(items); i += 1) {
 		const (key, value) = strings::cut(items[i], "=");
@@ -83,11 +103,30 @@ export fn parse_items(items: []str) (query | invalid) = {
 			private = private,
 			optional = optional,
 		});
+		append(keys, key);
+	};
+
+	if (len(query.items) == 0) {
+		ok = true;
+		return query;
+	};
+
+	// check dupes
+	sort(keys, size(str), &cmpkeys);
+	let prev = keys[0];
+	for (let i = 1z; i < len(keys); i += 1) {
+		if (prev == keys[i]) {
+			return dupkeys;
+		};
+		prev = keys[i];
 	};
 
 	ok = true;
 	return query;
 };
+
+fn cmpkeys(a: const *opaque, b: const *opaque) int =
+	strings::compare(*(a: *str), *(b: *str));
 
 // Frees resources associated with this query.
 export fn finish(q: *query) void = {
@@ -130,5 +169,16 @@ export fn finish(q: *query) void = {
 			assert(got.private == expect.2);
 			assert(got.optional == expect.3);
 		};
+	};
+
+	const errcases = [
+		`foo=bar foo=bar`,
+		`foo=bar foo=baz`,
+		`foo=bar foo!=baz`,
+		`foo=bar bar=bay foo=baz`,
+	];
+	for (let i = 0z; i < len(errcases); i += 1) {
+		const input = memio::fixed(strings::toutf8(errcases[i]));
+		assert(parse(&input) is dupkeys);
 	};
 };

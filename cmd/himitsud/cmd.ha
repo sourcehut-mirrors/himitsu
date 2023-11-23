@@ -14,7 +14,7 @@ use strings;
 use unix::poll::{event};
 
 type servererror = !(io::error | fs::error | exec::error | secstore::error);
-type cmderror = !(query::invalid | prompt::error | ...servererror);
+type cmderror = !(query::error | prompt::error | ...servererror);
 
 fn strerror(err: cmderror) const str = {
 	match (err) {
@@ -28,8 +28,8 @@ fn strerror(err: cmderror) const str = {
 		return prompt::strerror(err);
 	case let err: secstore::error =>
 		return secstore::strerror(err);
-	case query::invalid =>
-		return "Invalid query syntax";
+	case let err: query::error =>
+		return query::strerror(err);
 	};
 };
 
@@ -71,9 +71,8 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 			return err;
 		case let err: prompt::error =>
 			writefmt(client, "error {}", prompt::strerror(err));
-		case query::invalid =>
-			// XXX: Update me when there are more client errors
-			writefmt(client, "error {}", strerror(query::invalid));
+		case let err: query::error =>
+			writefmt(client, "error {}", strerror(err));
 		};
 	case void => yield;
 	};

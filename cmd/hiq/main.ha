@@ -97,8 +97,8 @@ export fn main() void = {
 		const query = match (query::parse_items(cmd.args)) {
 		case let q: query::query =>
 			yield q;
-		case query::invalid =>
-			fmt::fatal("Invalid query");
+		case let err: query::error =>
+			fmt::fatal(query::strerror(err));
 		};
 		defer query::finish(&query);
 		send(conn, op, &query, flags, field, one);
