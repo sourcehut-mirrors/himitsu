@@ -59,6 +59,9 @@ export fn parse_items(items: []str) (query | invalid) = {
 	// XXX: Should do something about the case where the user specifies both
 	// ? and !
 	let query = query { ... };
+	let ok = false;
+	defer if (!ok) finish(&query);
+
 	for (let i = 0z; i < len(items); i += 1) {
 		const (key, value) = strings::cut(items[i], "=");
 		let optional = false, private = false;
@@ -80,6 +83,8 @@ export fn parse_items(items: []str) (query | invalid) = {
 			optional = optional,
 		});
 	};
+
+	ok = true;
 	return query;
 };
 
