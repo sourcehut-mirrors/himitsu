@@ -3,6 +3,7 @@ use uuid;
 
 export type iterator = struct {
 	query: *query::query,
+	strict: bool,
 	index: size,
 };
 
@@ -11,9 +12,14 @@ export type iterator = struct {
 // the lifetime of the iterator.
 // 
 // The iterator is not valid if the store is mutated during the iteration.
-export fn query(store: *secstore, query: *query::query) iterator = {
+export fn query(
+	store: *secstore,
+	query: *query::query,
+	strict: bool
+) iterator = {
 	return iterator {
 		query = query,
+		strict = strict,
 		...
 	};
 };
@@ -22,14 +28,15 @@ export fn query(store: *secstore, query: *query::query) iterator = {
 export fn next(store: *secstore, iter: *iterator) (*entry | void) = {
 	for (iter.index < len(store.entries); iter.index += 1) {
 		const ent = &store.entries[iter.index];
-		if (entry_match(ent, iter.query)) {
+		if (entry_match(ent, iter.query, iter.strict)) {
 			iter.index += 1;
 			return ent;
 		};
 	};
 };
 
-fn entry_match(ent: *entry, query: *query::query) bool = {
+fn entry_match(ent: *entry, query: *query::query, strict: bool) bool = {
+	let nmatched = 0z;
 	for (let i = 0z; i < len(query.items); i += 1) {
 		const q = &query.items[i];
 		const p = match (findpair(ent, q.key)) {
@@ -39,6 +46,7 @@ fn entry_match(ent: *entry, query: *query::query) bool = {
 			};
 			continue;
 		case let p: *pair =>
+			nmatched += 1;
 			yield p;
 		};
 		match (p.value) {
@@ -52,6 +60,11 @@ fn entry_match(ent: *entry, query: *query::query) bool = {
 			};
 		};
 	};
+
+	if (strict && nmatched != len(ent.pairs)) {
+		return false;
+	};
+
 	return true;
 };
 

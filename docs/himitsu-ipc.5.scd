@@ -35,17 +35,18 @@ The following commands are recognized by the server:
 	Adds a new _key_ to the key store. The server will send a *key* reply
 	echoing the new key (without secrets), followed by an *end* reply.
 
-*del* _query_...
+*del* [-s] _query_...
 	Removes keys from the key store which match the provided _query_. The
 	user will be prompted to consent to this operation. The server will send
 	a *key* reply for each deleted key (without secrets), followed by an
-	*end* reply.
+	*end* reply. The option -s will enable the strict query mode.
 
-*query* [-d] _query_...
+*query* [-ds] _query_...
 	Queries the key store for keys matching the provided _query_. Matching
 	keys are returned via a series of *key* replies, terminated with an
 	*end* reply to signal the end of the list. If the -d option is provided,
-	the private values will be decrypted after requesting user consent.
+	the private values will be decrypted after requesting user consent. The
+	option -s will enable the strict query mode.
 
 *quit*
 	Requests that the daemon terminate itself. This command is only

@@ -102,7 +102,23 @@ fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 };
 
 fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
-	const q = query::parse_items(args[1..])?;
+	const cmd = getopt::parse(args,
+		"query the key store",
+		('s', "strict match"),
+		"query..."
+	);
+	defer getopt::finish(&cmd);
+
+	let strict = false;
+	for (let i = 0z; i < len(cmd.opts); i += 1) {
+		switch (cmd.opts[i].0) {
+		case 's' =>
+			strict = true;
+		case => abort();
+		};
+	};
+
+	const q = query::parse_items(cmd.args)?;
 	defer query::finish(&q);
 
 	let buf = memio::dynamic();
@@ -122,7 +138,7 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		prompter = new;
 	};
 
-	const iter = secstore::query(serv.store, &q);
+	const iter = secstore::query(serv.store, &q, strict);
 	let matches: []*secstore::entry = [];
 	for (true) {
 		const item = match (secstore::next(serv.store, &iter)) {
@@ -166,15 +182,19 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const cmd = getopt::parse(args,
 		"query the key store",
 		('d', "decrypt private keys"),
+		('s', "strict match"),
 		"query..."
 	);
 	defer getopt::finish(&cmd);
 
 	let decrypt = false;
+	let strict = false;
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
 		switch (cmd.opts[i].0) {
 		case 'd' =>
 			decrypt = true;
+		case 's' =>
+			strict = true;
 		case => abort();
 		};
 	};
@@ -197,7 +217,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const q = query::parse_items(cmd.args)?;
 	defer query::finish(&q);
 
-	const iter = secstore::query(serv.store, &q);
+	const iter = secstore::query(serv.store, &q, strict);
 	let matches: []*secstore::entry = [];
 	for (true) {
 		const item = match (secstore::next(serv.store, &iter)) {

@@ -17,7 +17,7 @@ export fn del(store: *secstore, q: *query::query) (void | locked) = {
 	// it could cause problems here.
 	for (let i = 0z; i < len(store.entries); i += 1) {
 		const ent = &store.entries[i];
-		if (entry_match(ent, q)) {
+		if (entry_match(ent, q, false)) { // TODO
 			delkeys(store, &store.entries[i]);
 			delete(store.entries[i]);
 			i -= 1;

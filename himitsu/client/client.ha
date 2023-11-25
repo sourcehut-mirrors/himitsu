@@ -24,6 +24,9 @@ export type operation = enum uint {
 export type flags = enum uint {
 	// Requests decryption from the Himitsu daemon.
 	DECRYPT = 1 << 0,
+
+	// Enable strict query mode
+	STRICT = 1 << 1,
 };
 
 // All possible errors which may be returned by this module.
@@ -84,6 +87,10 @@ export fn query(
 
 	if (flags & flags::DECRYPT != 0) {
 		fmt::fprint(&buf, "-d ")!;
+	};
+
+	if (flags & flags::STRICT != 0) {
+		fmt::fprint(&buf, "-s ")!;
 	};
 
 	query::unparse(&buf, q)!;

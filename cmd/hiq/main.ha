@@ -24,6 +24,7 @@ export fn main() void = {
 		('D', "delete matching keys"),
 		('F', "field", "select a field for output"),
 		('Q', "terminate the daemon (if started with -D)"),
+		('s', "strict query"),
 		"<query>",
 	];
 	const cmd = getopt::parse(os::args, usage...);
@@ -47,6 +48,8 @@ export fn main() void = {
 			field = cmd.opts[i].1;
 		case 'Q' =>
 			op = client::operation::QUIT;
+		case 's' =>
+			flags |= client::flags::STRICT;
 		case =>
 			fmt::fatal("Invalid command line option");
 		};

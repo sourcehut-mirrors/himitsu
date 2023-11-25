@@ -48,6 +48,10 @@ have already been quoted properly.
 	Terminate the Himitsu daemon. Only works if *himitsud*(1) was started
 	with the -D flag.
 
+*-s*
+	Enable strict query mode. Entries must not have more keys than specified
+	by the query in order to be matched.
+
 # EXAMPLES
 
 To query for all keys matching *proto=web*:

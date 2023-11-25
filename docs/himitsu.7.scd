@@ -60,6 +60,10 @@ The key store will return all entries with *proto=web*, a *host* and *username*
 key with any value, a secret *password* key, and an optional *comment* key set
 to any value.
 
+Per default all given keys in the query must be a subset of the entry for the
+match to succeed, meaning the entry can have more keys than specified by the
+query.
+
 ## KEY CONVENTIONS
 
 Himitsu does not much care about the format of the keys it stores, but tools

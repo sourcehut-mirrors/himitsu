@@ -284,7 +284,7 @@ export fn reencrypt_move(oldpass: []u8, newpass: []u8) (void | secstore::error) 
 
 	fmt::error("Copying all entries to the new store... ")!;
 	const q = query::query { ... };
-	const iter = secstore::query(&oldstore, &q);
+	const iter = secstore::query(&oldstore, &q, false);
 	for (true) {
 		const item = match (secstore::next(&oldstore, &iter)) {
 		case let item: *secstore::entry =>
