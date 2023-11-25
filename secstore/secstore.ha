@@ -335,9 +335,17 @@ fn free_keys(store: *secstore) void = {
 
 // Adds an item to the keystore. The provided query must not have any missing
 // values.
-export fn add(store: *secstore, q: *query::query) (*entry | locked) = {
+export fn add(store: *secstore, q: *query::query) (*entry | locked | dupentry) = {
 	if (store.state != state::UNLOCKED) {
 		return locked;
+	};
+
+	const checkq = query::dup_pub(q);
+	defer query::finish(&checkq);
+
+	let it = query(store, &checkq, true);
+	if (next(store, &it) is *entry) {
+		return dupentry;
 	};
 
 	// TODO: Better error handling

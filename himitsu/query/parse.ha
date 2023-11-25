@@ -128,6 +128,21 @@ export fn parse_items(items: []str) (query | error) = {
 fn cmpkeys(a: const *opaque, b: const *opaque) int =
 	strings::compare(*(a: *str), *(b: *str));
 
+// Duplicates a query, but only keeps values of public key/value pairs. The
+// caller must pass the return value to [[finish]] after use.
+export fn dup_pub(q: *query) query = {
+	let query = query { ... };
+	for (let i = 0z; i < len(q.items); i += 1) {
+		let p = q.items[i];
+
+		p.key = strings::dup(p.key);
+		p.value = if (p.private) "" else strings::dup(p.value);
+
+		append(query.items, p);
+	};
+	return query;
+};
+
 // Frees resources associated with this query.
 export fn finish(q: *query) void = {
 	for (let i = 0z; i < len(q.items); i += 1) {

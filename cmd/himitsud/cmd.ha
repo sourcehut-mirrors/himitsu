@@ -66,13 +66,15 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 	case let err: cmderror =>
 		// XXX: Probably a harec bug
 		match (err) {
-		case let err: servererror =>
-			writefmt(client, "error Internal error");
-			return err;
+		case let err: secstore::error =>
+			writefmt(client, "error {}", secstore::strerror(err));
 		case let err: prompt::error =>
 			writefmt(client, "error {}", prompt::strerror(err));
 		case let err: query::error =>
 			writefmt(client, "error {}", strerror(err));
+		case let err: servererror =>
+			writefmt(client, "error Internal error");
+			return err;
 		};
 	case void => yield;
 	};
@@ -92,8 +94,9 @@ fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 
 	const q = query::parse_items(args[1..])?;
 	defer query::finish(&q);
+
 	// TODO: Prompt user to fill in incomplete keys
-	let entry = secstore::add(serv.store, &q)!;
+	let entry = secstore::add(serv.store, &q)?;
 	let buf = memio::dynamic();
 	fmt::fprint(&buf, "key ")?;
 	secstore::write(serv.store, &buf, entry, false)?;

@@ -53,7 +53,10 @@ export type badstore = !void;
 
 export type locked = !void;
 
-export type error = !(fs::error | io::error | badstore | badpass | locked);
+export type dupentry = !void;
+
+export type error = !(fs::error | io::error | badstore
+	| badpass | locked | dupentry);
 
 export fn strerror(err: error) const str = {
 	match (err) {
@@ -63,6 +66,8 @@ export fn strerror(err: error) const str = {
 		return "Incorrect passphrase";
 	case locked =>
 		return "The keystore is locked";
+	case dupentry =>
+		return "The keystore does not allow duplicate entries";
 	case let err: fs::error =>
 		return fs::strerror(err);
 	case let err: io::error =>
