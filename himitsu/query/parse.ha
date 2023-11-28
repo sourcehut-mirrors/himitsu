@@ -1,3 +1,4 @@
+use bytes;
 use memio;
 use encoding::utf8;
 use io;
@@ -92,6 +93,9 @@ export fn parse_items(items: []str) (query | invalid) = {
 export fn finish(q: *query) void = {
 	for (let i = 0z; i < len(q.items); i += 1) {
 		free(q.items[i].key);
+		if (q.items[i].private) {
+			bytes::zero(strings::toutf8(q.items[i].value));
+		};
 		free(q.items[i].value);
 	};
 	free(q.items);
