@@ -132,7 +132,7 @@ fn send(
 
 	for (let i = 0; true; i += 1) {
 		let key = match (client::next(&keys)) {
-		case let k: const str =>
+		case let k: query::query =>
 			if (one && i > 0) {
 				fmt::fatal("Error: ambiguous match");
 			};
@@ -143,18 +143,14 @@ fn send(
 		};
 		match (field) {
 		case let field: str =>
-			const items = shlex::split(key)!;
-			defer strings::freeall(items);
-			const query = query::parse_items(items)!;
-			defer query::finish(&query);
-			for (let i = 0z; i < len(query.items); i += 1) {
-				let item = query.items[i];
+			for (let i = 0z; i < len(key.items); i += 1) {
+				let item = key.items[i];
 				if (item.key == field) {
 					fmt::fprintln(&buf, item.value)!;
 				};
 			};
 		case void =>
-			fmt::fprintln(&buf, key)!;
+			query::unparse(&buf, &key)!;
 		};
 	};
 

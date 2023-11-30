@@ -105,7 +105,7 @@ export fn query(
 
 // Returns the next key from a key iterator, or void if no further keys are
 // provided.
-export fn next(iter: *keyiter) (const str | void | error) = {
+export fn next(iter: *keyiter) (query::query | void | error) = {
 	memio::reset(&iter.buf);
 	match (bufio::read_line(iter.conn)?) {
 	case let buf: []u8 =>
@@ -130,7 +130,13 @@ export fn next(iter: *keyiter) (const str | void | error) = {
 		return strings::sub(string, 6, strings::end): hierror: error;
 	};
 	if (strings::hasprefix(string, "key ")) {
-		return strings::sub(string, 4, strings::end);
+		const key = strings::sub(string, 4, strings::end);
+		match (query::parse_str(key)) {
+		case let q: query::query =>
+			return q;
+		case query::error =>
+			abort("himitsu returned an invalid key");
+		};
 	};
 	abort("himitsu returned unexpected response");
 };
