@@ -82,14 +82,18 @@ export fn main() void = {
 			case let line: []u8 =>
 				// NB. Can't defer free(line), causes a
 				// use-after-free in fmt::fatal
-				const query = memio::fixed(line);
-				const query = match (query::parse(&query)) {
+				const line = match (strings::fromutf8(line)) {
+				case let s: str =>
+					yield s;
+				case =>
+					free(line);
+					fmt::fatal("Error: Query is not valid UTF-8");
+				};
+				const query = match (query::parse_str(line)) {
 				case let q: query::query =>
 					yield q;
 				case query::invalid =>
-					fmt::fatal("Invalid query:", strings::fromutf8(line)!);
-				case let err: io::error =>
-					abort(); // reading from a fixed buffer shouldn't fail
+					fmt::fatal("Invalid query:", line);
 				};
 				defer query::finish(&query);
 				free(line);

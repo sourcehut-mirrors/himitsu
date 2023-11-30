@@ -61,8 +61,13 @@ export fn parse(in: io::handle) (query | error | io::error) = {
 	case utf8::invalid =>
 		return invalid;
 	};
+	return parse_str(data);
+};
 
-	const items = match (shlex::split(data)) {
+// Parses a query from a string, returning its key/value pairs. The caller must
+// pass the return value to [[finish]] when they are done with it.
+export fn parse_str(in: str) (query | error) = {
+	const items = match (shlex::split(in)) {
 	case let items: []str =>
 		yield items;
 	case shlex::syntaxerr =>
