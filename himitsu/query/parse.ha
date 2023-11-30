@@ -4,6 +4,7 @@ use encoding::utf8;
 use io;
 use regex;
 use shlex;
+use sort::cmp;
 use sort::{sort};
 use strings;
 use fmt;
@@ -112,7 +113,7 @@ export fn parse_items(items: []str) (query | error) = {
 	};
 
 	// check dupes
-	sort(keys, size(str), &cmpkeys);
+	sort(keys, size(str), &cmp::strs);
 	let prev = keys[0];
 	for (let i = 1z; i < len(keys); i += 1) {
 		if (prev == keys[i]) {
@@ -124,9 +125,6 @@ export fn parse_items(items: []str) (query | error) = {
 	ok = true;
 	return query;
 };
-
-fn cmpkeys(a: const *opaque, b: const *opaque) int =
-	strings::compare(*(a: *str), *(b: *str));
 
 // Duplicates a query, but only keeps values of public key/value pairs. The
 // caller must pass the return value to [[finish]] after use.
