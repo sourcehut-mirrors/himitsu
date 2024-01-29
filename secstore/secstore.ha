@@ -449,7 +449,15 @@ fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 		const plaintext = secunbox(&dec, key)?;
 
 		const buf = memio::fixed(plaintext);
-		const q = query::parse(&buf)!;
+		const q = match (query::parse(&buf)) {
+		case let q: query::query =>
+			yield q;
+		case query::error =>
+			io::seek(&buf, 0, io::whence::SET)!;
+			yield compatquery_parse(&buf)!;
+		case let e: io::error =>
+			return e;
+		};
 		defer query::finish(&q);
 
 		let pairs: []pair = [];

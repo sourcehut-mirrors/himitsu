@@ -135,7 +135,12 @@ export fn next(iter: *keyiter) (query::query | void | error) = {
 		case let q: query::query =>
 			return q;
 		case query::error =>
-			abort("himitsu returned an invalid key");
+			// happens when querying invalid keys that have been
+			// stored before the introduction of new entry
+			// restrictions.
+			fmt::errorfln("himitsu returned an invalid key: {}",
+				strings::sub(string, 4, strings::end))!;
+			abort();
 		};
 	};
 	abort("himitsu returned unexpected response");
