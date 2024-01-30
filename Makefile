@@ -41,25 +41,25 @@ DOCS=\
 docs: $(DOCS)
 
 himitsud.1: docs/himitsud.1.scd
-	$(SCDOC) <$< >$@
+	$(SCDOC) <docs/himitsud.1.scd >$@
 
 himitsu-store.1: docs/himitsu-store.1.scd
-	$(SCDOC) <$< >$@
+	$(SCDOC) <docs/himitsu-store.1.scd >$@
 
 hiq.1: docs/hiq.1.scd
-	$(SCDOC) <$< >$@
+	$(SCDOC) <docs/hiq.1.scd >$@
 
 himitsu.ini.5: docs/himitsu.ini.5.scd
-	$(SCDOC) <$< >$@
+	$(SCDOC) <docs/himitsu.ini.5.scd >$@
 
 himitsu-ipc.5: docs/himitsu-ipc.5.scd
-	$(SCDOC) <$< >$@
+	$(SCDOC) <docs/himitsu-ipc.5.scd >$@
 
 himitsu-prompter.5: docs/himitsu-prompter.5.scd
-	$(SCDOC) <$< >$@
+	$(SCDOC) <docs/himitsu-prompter.5.scd >$@
 
 himitsu.7: docs/himitsu.7.scd
-	$(SCDOC) <$< >$@
+	$(SCDOC) <docs/himitsu.7.scd >$@
 
 clean:
 	rm -f himitsud himitsu-store hiq $(DOCS)
