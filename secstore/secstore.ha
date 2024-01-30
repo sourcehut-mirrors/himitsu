@@ -446,7 +446,7 @@ fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 		const buf = memio::fixed(line);
 		const dec = base64::newdecoder(&base64::std_encoding, &buf);
 
-		const plaintext = secunbox(&dec, key)?;
+		const plaintext = secunbox(&dec, key: []u8)?;
 
 		const buf = memio::fixed(plaintext);
 		const q = match (query::parse(&buf)) {
