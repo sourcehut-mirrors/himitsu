@@ -32,7 +32,7 @@ export fn main() void = {
 
 	signal::block(signal::sig::TTOU);
 	let pgid = rt::getpgid(0)!;
-	rt::ioctl(tty, 21520, &pgid)!; // TIOCSPGRP
+	rt::ioctl(tty, rt::TIOCSPGRP, &pgid)!;
 
 	let ctx = context {
 		tty = tty,
