@@ -25,7 +25,7 @@ type server = struct {
 	store: *secstore::secstore,
 	conf: *config::config,
 	sock: net::socket,
-	signalfd: io::file,
+	sigpipe: io::file,
 	pollfd: []poll::pollfd,
 	clients: []client,
 	disconnected: bool, // XXX: Bit of a hack here
@@ -37,7 +37,7 @@ type server = struct {
 fn bind(
 	store: *secstore::secstore,
 	conf: *config::config,
-	signalfd: io::file,
+	sigpipe: io::file,
 	daemonize: bool,
 ) server = {
 	const statedir = match (dirs::runtime()) {
@@ -77,7 +77,7 @@ fn bind(
 		events = event::POLLIN,
 		...
 	}, poll::pollfd {
-		fd = signalfd,
+		fd = sigpipe,
 		events = event::POLLIN,
 		...
 	}]);
@@ -85,7 +85,7 @@ fn bind(
 	return server {
 		sock = sock,
 		conf = conf,
-		signalfd = signalfd,
+		sigpipe = sigpipe,
 		pollfd = pollfd,
 		store = store,
 		daemonized = daemonize,
@@ -120,7 +120,8 @@ fn dispatch(serv: *server) bool = {
 			accept(serv);
 		};
 		if (serv.pollfd[1].revents & event::POLLIN != 0) {
-			signal::read(serv.signalfd)!;
+			let buf: [1]u8 = [0];
+			io::read(serv.sigpipe, buf)!;
 			return false;
 		};
 		for (let i = POLLFD_RESERVED; i < len(serv.pollfd); i += 1) {

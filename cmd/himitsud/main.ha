@@ -10,6 +10,12 @@ use secstore;
 use unix::signal;
 use unix;
 
+fn handle(sig: signal::sig, info: *signal::siginfo, ucontext: *opaque) void = {
+	io::write(sigwrite, [sig: u8])!;
+};
+
+let sigwrite: io::file = -1;
+
 export fn main() void = {
 	const cmd = getopt::parse(os::args,
 		// TODO: Add note warning against using this to himitsu man page
@@ -34,9 +40,10 @@ export fn main() void = {
 	};
 	defer secstore::close(&store);
 
-	signal::block(signal::sig::INT, signal::sig::TERM);
-	const sigfd = signal::signalfd(signal::sig::INT, signal::sig::TERM)!;
-	defer io::close(sigfd)!;
+	let pipe = unix::pipe()!;
+	sigwrite = pipe.1;
+	signal::handle(signal::sig::INT, &handle);
+	signal::handle(signal::sig::TERM, &handle);
 
 	const conf = match (config::load()) {
 	case let conf: config::config =>
@@ -46,7 +53,7 @@ export fn main() void = {
 	};
 	defer config::finish(&conf);
 
-	const sock = bind(&store, &conf, sigfd, daemonize);
+	const sock = bind(&store, &conf, pipe.0, daemonize);
 
 	if (daemonize) {
 		match (exec::fork()) {
