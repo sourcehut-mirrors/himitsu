@@ -94,6 +94,8 @@ export fn main() void = {
 					yield q;
 				case query::invalid =>
 					fmt::fatal("Invalid query:", line);
+				case query::dupkeys =>
+					fmt::fatal("Duplicate keys in query:", line);
 				};
 				defer query::finish(&query);
 				free(line);
