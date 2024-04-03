@@ -68,7 +68,7 @@ export fn sendkey(
 		return err;
 	case let err: io::error =>
 		return err;
-	case void =>
+	case size =>
 		yield;
 	};
 	fmt::fprintln(prompt.stdin)?;

@@ -20,35 +20,37 @@ export fn write(
 	sink: io::handle,
 	ent: *entry,
 	private: bool,
-) (void | error) = {
+) (size | error) = {
 	if (private && store.state != state::UNLOCKED) {
 		return locked;
 	};
 
-	// TODO: https://todo.sr.ht/~sircmpwn/hare/619
+	let z = 0z;
 	for (let i = 0z; i < len(ent.pairs); i += 1) {
 		const pair = &ent.pairs[i];
-		shlex::quote(sink, pair.key)?;
+		z += shlex::quote(sink, pair.key)?;
 		match (pair.value) {
 		case let val: str =>
-			fmt::fprint(sink, "=")?;
-			shlex::quote(sink, val)?;
+			z += fmt::fprint(sink, "=")?;
+			z += shlex::quote(sink, val)?;
 		case let u: uuid::uuid =>
-			fmt::fprint(sink, "!")?;
+			z += fmt::fprint(sink, "!")?;
 			if (private) {
 				// XXX: Maybe shlex::quote should come with a
 				// stream-oriented interface
-				fmt::fprint(sink, "=")?;
+				z += fmt::fprint(sink, "=")?;
 				let buf = memio::dynamic();
 				defer io::close(&buf)!;
 				write_private(store, &buf, u)?;
-				shlex::quote(sink, memio::string(&buf)!)?;
+				z += shlex::quote(sink, memio::string(&buf)!)?;
 			};
 		};
 		if (i + 1 < len(ent.pairs)) {
-			fmt::fprint(sink, " ")?;
+			z += fmt::fprint(sink, " ")?;
 		};
 	};
+
+	return z;
 };
 
 fn write_private(
