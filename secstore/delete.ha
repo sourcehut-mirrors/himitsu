@@ -33,8 +33,8 @@ export fn del(store: *secstore, q: *query::query) (void | locked) = {
 	path::push(&buf, "..", "index.1")!;
 
 	const index = os::create(path::string(&buf), 0o600)!;
-	for (let i = 0z; i < len(store.entries); i += 1) {
-		add_index(store, &store.entries[i]);
+	for (let entry &.. store.entries) {
+		add_index(store, entry);
 	};
 
 	store.index = index;
@@ -44,8 +44,7 @@ export fn del(store: *secstore, q: *query::query) (void | locked) = {
 fn delkeys(store: *secstore, entry: *entry) void = {
 	let buf = path::init()!;
 
-	for (let i = 0z; i < len(entry.pairs); i += 1) {
-		const pair = &entry.pairs[i];
+	for (let pair &.. entry.pairs) {
 		const id = match (pair.value) {
 		case let id: uuid::uuid =>
 			yield id;

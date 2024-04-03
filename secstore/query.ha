@@ -24,8 +24,8 @@ export fn query(
 	};
 };
 
-// Returns the next matching item from an iterator, or void if none remain.
-export fn next(store: *secstore, iter: *iterator) (*entry | void) = {
+// Returns the next matching item from an iterator, or done if none remain.
+export fn next(store: *secstore, iter: *iterator) (*entry | done) = {
 	for (iter.index < len(store.entries); iter.index += 1) {
 		const ent = &store.entries[iter.index];
 		if (entry_match(ent, iter.query, iter.strict)) {
@@ -33,12 +33,12 @@ export fn next(store: *secstore, iter: *iterator) (*entry | void) = {
 			return ent;
 		};
 	};
+	return done;
 };
 
 fn entry_match(ent: *entry, query: *query::query, strict: bool) bool = {
 	let nmatched = 0z;
-	for (let i = 0z; i < len(query.items); i += 1) {
-		const q = &query.items[i];
+	for (let q &.. query.items) {
 		const p = match (findpair(ent, q.key)) {
 		case void =>
 			if (!q.optional) {
@@ -69,9 +69,9 @@ fn entry_match(ent: *entry, query: *query::query, strict: bool) bool = {
 };
 
 fn findpair(ent: *entry, key: str) (*pair | void) = {
-	for (let i = 0z; i < len(ent.pairs); i += 1) {
-		if (ent.pairs[i].key == key) {
-			return &ent.pairs[i];
+	for (let pair &.. ent.pairs) {
+		if (pair.key == key) {
+			return pair;
 		};
 	};
 };

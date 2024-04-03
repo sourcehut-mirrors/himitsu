@@ -143,13 +143,7 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 
 	const iter = secstore::query(serv.store, &q, strict);
 	let matches: []*secstore::entry = [];
-	for (true) {
-		const item = match (secstore::next(serv.store, &iter)) {
-		case let item: *secstore::entry =>
-			yield item;
-		case void =>
-			break;
-		};
+	for (let item => secstore::next(serv.store, &iter)) {
 		fmt::fprint(&buf, "key ")?;
 		secstore::write(serv.store, &buf, item, false)?;
 		io::write(&buf, ['\n'])?;
@@ -222,13 +216,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 
 	const iter = secstore::query(serv.store, &q, strict);
 	let matches: []*secstore::entry = [];
-	for (true) {
-		const item = match (secstore::next(serv.store, &iter)) {
-		case let item: *secstore::entry =>
-			yield item;
-		case void =>
-			break;
-		};
+	for (let item => secstore::next(serv.store, &iter)) {
 		append(matches, item);
 	};
 

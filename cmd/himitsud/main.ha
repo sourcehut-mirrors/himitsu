@@ -23,8 +23,7 @@ export fn main() void = {
 	defer getopt::finish(&cmd);
 
 	let daemonize = false;
-	for (let i = 0z; i < len(cmd.opts); i += 1) {
-		const opt = &cmd.opts[i];
+	for (let opt &.. cmd.opts) {
 		switch (opt.0) {
 		case 'D' =>
 			daemonize = true;

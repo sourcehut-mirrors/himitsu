@@ -34,8 +34,8 @@ export fn main() void = {
 	let flags: client::flags = 0;
 	let field: (str | void) = void;
 	let one = false;
-	for (let i = 0z; i < len(cmd.opts); i += 1) {
-		switch (cmd.opts[i].0) {
+	for (let opt .. cmd.opts) {
+		switch (opt.0) {
 		case '1' =>
 			one = true;
 		case 'a' =>
@@ -45,7 +45,7 @@ export fn main() void = {
 		case 'D' =>
 			op = client::operation::DEL;
 		case 'F' =>
-			field = cmd.opts[i].1;
+			field = opt.1;
 		case 'Q' =>
 			op = client::operation::QUIT;
 		case 's' =>
@@ -76,31 +76,27 @@ export fn main() void = {
 		if (tty::isatty(os::stderr_file) && tty::isatty(os::stdin_file)) {
 			fmt::errorln("Enter new keys, one per line, then press ^d:")!;
 		};
-		for (true) {
-			match (bufio::read_line(os::stdin)!) {
-			case io::EOF => break;
-			case let line: []u8 =>
-				// NB. Can't defer free(line), causes a
-				// use-after-free in fmt::fatal
-				const line = match (strings::fromutf8(line)) {
-				case let s: str =>
-					yield s;
-				case =>
-					free(line);
-					fmt::fatal("Error: Query is not valid UTF-8");
-				};
-				const query = match (query::parse_str(line)) {
-				case let q: query::query =>
-					yield q;
-				case query::invalid =>
-					fmt::fatal("Invalid query:", line);
-				case query::dupkeys =>
-					fmt::fatal("Duplicate keys in query:", line);
-				};
-				defer query::finish(&query);
+		for (let line => bufio::read_line(os::stdin)!) {
+			// NB. Can't defer free(line), causes a
+			// use-after-free in fmt::fatal
+			const line = match (strings::fromutf8(line)) {
+			case let s: str =>
+				yield s;
+			case =>
 				free(line);
-				send(conn, client::operation::ADD, &query, flags, field, one);
+				fmt::fatal("Error: Query is not valid UTF-8");
 			};
+			const query = match (query::parse_str(line)) {
+			case let q: query::query =>
+				yield q;
+			case query::invalid =>
+				fmt::fatal("Invalid query:", line);
+			case query::dupkeys =>
+				fmt::fatal("Duplicate keys in query:", line);
+			};
+			defer query::finish(&query);
+			free(line);
+			send(conn, client::operation::ADD, &query, flags, field, one);
 		};
 	} else {
 		const query = match (query::parse_items(cmd.args)) {
@@ -145,8 +141,7 @@ fn send(
 		};
 		match (field) {
 		case let field: str =>
-			for (let i = 0z; i < len(key.items); i += 1) {
-				let item = key.items[i];
+			for (let item &.. key.items) {
 				if (item.key == field) {
 					fmt::fprintln(&buf, item.value)!;
 				};

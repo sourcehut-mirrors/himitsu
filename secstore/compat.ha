@@ -36,8 +36,8 @@ fn compatquery_parse(in: io::handle) (query::query | query::error | io::error) =
 	let ok = false;
 	defer if (!ok) query::finish(&q);
 
-	for (let i = 0z; i < len(items); i += 1) {
-		const (key, value) = strings::cut(items[i], "=");
+	for (let item .. items) {
+		const (key, value) = strings::cut(item, "=");
 		let optional = false, private = false;
 		if (strings::hassuffix(key, "!")) {
 			private = true;

@@ -89,8 +89,8 @@ export fn parse_items(items: []str) (query | error) = {
 	let keys: []str = [];
 	defer free(keys);
 
-	for (let i = 0z; i < len(items); i += 1) {
-		const (key, value) = strings::cut(items[i], "=");
+	for (let item .. items) {
+		const (key, value) = strings::cut(item, "=");
 		let optional = false, private = false;
 		if (strings::hassuffix(key, "!")) {
 			private = true;
@@ -135,9 +135,7 @@ export fn parse_items(items: []str) (query | error) = {
 // caller must pass the return value to [[finish]] after use.
 export fn dup_pub(q: *query) query = {
 	let query = query { ... };
-	for (let i = 0z; i < len(q.items); i += 1) {
-		let p = q.items[i];
-
+	for (let p .. q.items) {
 		p.key = strings::dup(p.key);
 		p.value = if (p.private) "" else strings::dup(p.value);
 
@@ -148,12 +146,12 @@ export fn dup_pub(q: *query) query = {
 
 // Frees resources associated with this query.
 export fn finish(q: *query) void = {
-	for (let i = 0z; i < len(q.items); i += 1) {
-		free(q.items[i].key);
-		if (q.items[i].private) {
-			bytes::zero(strings::toutf8(q.items[i].value));
+	for (let item .. q.items) {
+		free(item.key);
+		if (item.private) {
+			bytes::zero(strings::toutf8(item.value));
 		};
-		free(q.items[i].value);
+		free(item.value);
 	};
 	free(q.items);
 };
@@ -195,8 +193,8 @@ export fn finish(q: *query) void = {
 		`foo=bar foo!=baz`,
 		`foo=bar bar=bay foo=baz`,
 	];
-	for (let i = 0z; i < len(errcases); i += 1) {
-		const input = memio::fixed(strings::toutf8(errcases[i]));
+	for (let err .. errcases) {
+		const input = memio::fixed(strings::toutf8(err));
 		assert(parse(&input) is dupkeys);
 	};
 };

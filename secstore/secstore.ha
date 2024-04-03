@@ -330,8 +330,8 @@ export fn close(store: *secstore) void = {
 };
 
 fn free_keys(store: *secstore) void = {
-	for (let i = 0z; i < len(store.entries); i += 1) {
-		entry_finish(&store.entries[i]);
+	for (let entry &.. store.entries) {
+		entry_finish(entry);
 	};
 };
 
@@ -352,8 +352,7 @@ export fn add(store: *secstore, q: *query::query) (*entry | locked | dupentry) =
 
 	// TODO: Better error handling
 	let pairs: []pair = [];
-	for (let i = 0z; i < len(q.items); i += 1) {
-		const item = q.items[i];
+	for (let item .. q.items) {
 		assert(item.value != "", "Invalid query submitted to secstore::add");
 		const val = if (item.private) {
 			yield add_secret(store, item.value);
@@ -436,13 +435,7 @@ fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 	defer bytes::zero(key);
 	keystore::read(store.key as keystore::key, key);
 
-	for (true) {
-		const line = match (bufio::read_line(store.index)?) {
-		case let line: []u8 =>
-			yield line;
-		case io::EOF =>
-			break;
-		};
+	for (let line => bufio::read_line(store.index)?) {
 		defer free(line);
 
 		const buf = memio::fixed(line);
@@ -463,8 +456,7 @@ fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
 		defer query::finish(&q);
 
 		let pairs: []pair = [];
-		for (let i = 0z; i < len(q.items); i += 1) {
-			const item = q.items[i];
+		for (let item .. q.items) {
 			const val = if (item.private) {
 				yield uuid::decodestr(item.value)!;
 			} else {

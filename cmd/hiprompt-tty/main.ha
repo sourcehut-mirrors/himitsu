@@ -40,8 +40,8 @@ export fn main() void = {
 		...
 	};
 	defer {
-		for (let i = 0z; i < len(ctx.keys); i += 1) {
-			query::finish(&ctx.keys[i]);
+		for (let key &.. ctx.keys) {
+			query::finish(key);
 		};
 		free(ctx.keys);
 		io::close(ctx.tty)!;
@@ -123,9 +123,9 @@ fn prompt(ctx: *context) void = {
 	fmt::fprintfln(ctx.tty,
 		"An application has requested {} of the following keys:",
 		mode)!;
-	for (let i = 0z; i < len(ctx.keys); i += 1) {
+	for (let key &.. ctx.keys) {
 		fmt::fprintf(ctx.tty, "\t")!;
-		query::unparse(ctx.tty, &ctx.keys[i])!;
+		query::unparse(ctx.tty, key)!;
 	};
 
 	fmt::fprint(ctx.tty, "Proceed? [y/N] ")!;

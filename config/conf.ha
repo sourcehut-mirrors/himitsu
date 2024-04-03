@@ -41,14 +41,7 @@ export fn load() (config | error) = {
 
 	const scanner = ini::scan(file);
 	defer ini::finish(&scanner);
-	for (true) {
-		const entry = match (ini::next(&scanner)?) {
-		case let entry: ini::entry =>
-			yield entry;
-		case io::EOF =>
-			break;
-		};
-
+	for (let entry => ini::next(&scanner)?) {
 		switch (entry.0) {
 		case "himitsud" =>
 			conf_himitsud(&conf, &entry);

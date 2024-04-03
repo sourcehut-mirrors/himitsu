@@ -34,8 +34,7 @@ export fn main() void = {
 	let re = false;
 	let initstore = false;
 	let chpw = false;
-	for (let i = 0z; i < len(cmd.opts); i += 1) {
-		const opt = cmd.opts[i];
+	for (let opt .. cmd.opts) {
 		switch (opt.0) {
 		case 'r' =>
 			re = true;
@@ -285,22 +284,17 @@ export fn reencrypt_move(oldpass: []u8, newpass: []u8) (void | secstore::error) 
 	fmt::error("Copying all entries to the new store... ")!;
 	const q = query::query { ... };
 	const iter = secstore::query(&oldstore, &q, false);
-	for (true) {
-		const item = match (secstore::next(&oldstore, &iter)) {
-		case let item: *secstore::entry =>
-			let buf = memio::dynamic();
-			defer io::close(&buf)!;
-			secstore::write(&oldstore, &buf, item, true)!;
+	for (let item => secstore::next(&oldstore, &iter)) {
+		let buf = memio::dynamic();
+		defer io::close(&buf)!;
+		secstore::write(&oldstore, &buf, item, true)!;
 
-			io::seek(&buf, 0, io::whence::SET)!;
+		io::seek(&buf, 0, io::whence::SET)!;
 
-			let iq = query::parse(&buf)!;
-			defer query::finish(&iq);
-			secstore::add(&store, &iq)!;
-			yield item;
-		case void =>
-			break;
-		};
+		let iq = query::parse(&buf)!;
+		defer query::finish(&iq);
+		secstore::add(&store, &iq)!;
+		yield item;
 	};
 
 	secstore::close(&oldstore);

@@ -37,8 +37,7 @@ export type pair = struct {
 };
 
 fn entry_finish(ent: *entry) void = {
-	for (let i = 0z; i < len(ent.pairs); i += 1) {
-		const pair = &ent.pairs[i];
+	for (let pair &.. ent.pairs) {
 		free(pair.key);
 		match (pair.value) {
 		case let val: str =>

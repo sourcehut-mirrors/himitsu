@@ -94,10 +94,7 @@ export fn wait_unlock(
 	prompt: *prompter,
 	store: *secstore::secstore,
 ) (bool | error) = {
-	for (true) match (bufio::read_line(prompt.stdout)?) {
-	case io::EOF =>
-		break;
-	case let buf: []u8 =>
+	for (let buf => bufio::read_line(prompt.stdout)?) {
 		defer {
 			bytes::zero(buf);
 			free(buf);
