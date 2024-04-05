@@ -1,0 +1,3 @@
+fn harden() void = {
+	return;
+};

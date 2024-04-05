@@ -317,12 +317,13 @@ export fn lock(store: *secstore) void = {
 		yield;
 	};
 	store.state = state::SOFT_LOCKED;
+	free_keys(store);
+	free(store.entries);
 };
 
 // Closes the secstore, freeing any associated resources.
 export fn close(store: *secstore) void = {
 	lock(store);
-	free_keys(store);
 	io::close(store.index)!;
 	free(store.dir);
 };

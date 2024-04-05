@@ -40,6 +40,8 @@ export fn main() void = {
 	};
 	defer secstore::close(&store);
 
+	harden();
+
 	let pipe = unix::pipe()!;
 	sigwrite = pipe.1;
 	signal::handle(signal::sig::INT, &handle);

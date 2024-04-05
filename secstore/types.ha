@@ -1,7 +1,9 @@
+use bytes;
 use crypto::keystore;
 use errors;
 use fs;
 use io;
+use strings;
 use uuid;
 
 export type state = enum {
@@ -40,6 +42,7 @@ fn entry_finish(ent: *entry) void = {
 		free(pair.key);
 		match (pair.value) {
 		case let val: str =>
+			bytes::zero(strings::toutf8(val));
 			free(val);
 		case uuid::uuid =>
 			yield;
