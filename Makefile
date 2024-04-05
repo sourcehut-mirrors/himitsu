@@ -49,7 +49,7 @@ himitsu-prompter.5: docs/himitsu-prompter.5.scd
 himitsu.7: docs/himitsu.7.scd
 
 clean:
-	rm -f himitsud himitsu-store hiq himitsu-tty $(DOCS)
+	rm -f himitsud himitsu-store hiq hiprompt-tty $(DOCS)
 
 install:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
@@ -73,7 +73,7 @@ uninstall:
 	rm -f $(DESTDIR)$(PREFIX)/bin/himitsud \
 	      $(DESTDIR)$(PREFIX)/bin/himitsu-store \
 	      $(DESTDIR)$(PREFIX)/bin/hiq \
-	      $(DESTDIR)$(PREFIX)/bin/himitsu-tty
+	      $(DESTDIR)$(PREFIX)/bin/hiprompt-tty
 	rm -rf $(DESTDIR)$(THIRDPARTYDIR)/himitsu
 
 .PHONY: all himitsud himitsu-store hiprompt-tty hiq check clean install uninstall docs
