@@ -12,19 +12,16 @@ MANDIR=$(SHAREDIR)/man
 HARESRCDIR=$(SRCDIR)/hare
 THIRDPARTYDIR=$(HARESRCDIR)/third-party
 
-all: himitsud himitsu-store hiq hiprompt-tty docs
+CMDS=\
+	himitsud \
+	himitsu-store \
+	hiq \
+	hiprompt-tty
 
-himitsud:
-	hare build -o $@ cmd/$@/
+all: $(CMDS) docs
 
-himitsu-store:
-	hare build -o $@ cmd/$@/
-
-hiprompt-tty:
-	hare build -o $@ cmd/$@/
-
-hiq:
-	hare build -o $@ cmd/$@/
+$(CMDS):
+	$(HARE) build $(HAREFLAGS) -o $@ cmd/$@/
 
 check:
 	hare test
@@ -40,26 +37,16 @@ DOCS=\
 
 docs: $(DOCS)
 
+$(DOCS):
+	$(SCDOC) <docs/$@.scd >$@
+
 himitsud.1: docs/himitsud.1.scd
-	$(SCDOC) <docs/himitsud.1.scd >$@
-
 himitsu-store.1: docs/himitsu-store.1.scd
-	$(SCDOC) <docs/himitsu-store.1.scd >$@
-
 hiq.1: docs/hiq.1.scd
-	$(SCDOC) <docs/hiq.1.scd >$@
-
 himitsu.ini.5: docs/himitsu.ini.5.scd
-	$(SCDOC) <docs/himitsu.ini.5.scd >$@
-
 himitsu-ipc.5: docs/himitsu-ipc.5.scd
-	$(SCDOC) <docs/himitsu-ipc.5.scd >$@
-
 himitsu-prompter.5: docs/himitsu-prompter.5.scd
-	$(SCDOC) <docs/himitsu-prompter.5.scd >$@
-
 himitsu.7: docs/himitsu.7.scd
-	$(SCDOC) <docs/himitsu.7.scd >$@
 
 clean:
 	rm -f himitsud himitsu-store hiq himitsu-tty $(DOCS)
