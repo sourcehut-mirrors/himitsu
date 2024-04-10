@@ -1,0 +1,135 @@
+# Himitsu security model
+
+This document discusses Himitsu's approach to and design regarding security and
+privacy, what guarantees it attempts to make, and what it does not attempt to
+protect against.
+
+Note that Himitsu's implementation has not been independently audited, and in
+practice the security may be undermined by bugs and/or unforeseen issues with
+the design and implementation.
+
+## Glossary
+
+* **key store**: the set of keys stored in Himitsu
+* **key**: a single "key", which may have many key/value "pairs".
+  `foo=bar bar!=baz` is a key.
+* **secret pair**: a key/value pair of a key which has the secret flag set, such
+  as `bar!=baz`. "baz" is the **secret value** of this pair.
+* **secstore**: "Secure store", the encrypted-at-rest storage for the key store
+* **master key**: an cryptographic key used to encrypt and authenticate your key store
+* **master passphrase**: a passphrase with which Himitsu encrypts your master key
+
+## Offline security
+
+*"Offline security" in this document refers to the security measures taken to
+protect your key store when the Himitsu daemon is not running. Threats covered
+here include attackers running programs on the same system as yourself or
+another user, a copy of your key store being in the posession of an attacker,
+and so on.*
+
+Himitsu's secret store is used to store your private data offline. The secstore
+contains the following information:
+
+* Your master key, encrypted
+* An index, encrypted with your master key
+* Secret keys, encrypted with your master key
+
+Your master passphrase is used as the input to a key derivation algorithm
+(argon2id at the time of writing). This derives a symmetric encryption key we
+use to decrypt the master key (which is itself a symmetric encryption key), and
+obfuscates the master password on disk. The key derivation algorithm is designed
+to be resistant to an offline attack, and at the time of writing there are no
+known practical attacks against argon2id.
+
+However, the master key is ultimately only as secure as your passphrase. If you
+use very short or common passphrases, an attacker may be able to guess it in a
+practical amount of time. Moreover, no amount of software security will prevent
+someone from reading the master passphrase off of a sticky note on your desk. An
+ideal passphrase is long, so it's secure, and memorable, so you don't have to
+write it down: 5 or 6 randomly-selected dictionary words are a safe bet.
+
+The master key is used to separately encrypt each key in the secstore "index".
+The index is encrypted and authenticated. An attacker can determine the number
+of keys in your key store, and can estimate the length of each key in bytes, but
+cannot read the pairs, secret or not. An attacker cannot tamper with your
+key-store, either: they may change the order of the pairs but they cannot read,
+modify, or forge your keys.
+
+The index stores the "key" portion of a secret pair (i.e. **key**!=value) and
+stores a UUID uniquely associated with the secret value. The secret value is
+stored in a separate file named for this UUID. The secret value itself is
+encrypted and authenticated in a tamper-resistant manner. An attacker can
+determine the total number of secret values among all keys in your key store,
+and estimate each of their lengths in bytes, but cannot read, modify, or forge
+secret values.
+
+Authenticated encryption is performed at the time of with an algorithm based on
+RFC 8439, but using XChaCha20 instead of ChaCha20.
+
+### Additional offline security measures
+
+Your secstore is stored with the Unix permissions configured such that it is
+only readable and writable by your user account.
+
+### Securely handling your secstore
+
+Himitsu is designed such that your secstore can fall into an adversary's hands
+and remain secure. Assuming you have chosen a strong enough password, you are
+able to safely store it with a cloud provider, copy it between machines, put it
+on a flash drive and lose it, and so on.
+
+
+## Online security
+
+The Himitsu daemon has several security features to implement a defense-in-depth
+design. The Himitsu daemon has two online security models: locked and unlocked.
+
+When you start Himitsu, it runs in locked mode. In this mode, Himitsu waits for
+the user to initiate an key store operation and stores no sensitive information
+in memory whatsoever. When you attempt any operation for the first time, Himitsu
+will prompt you for your master passphrase and enter unlocked mode to complete
+your request.
+
+Once unlocked, the daemon will decrypt and authenticate the index, then will
+retain the master key and a copy of the index in memory. It will *not* decrypt
+secret values or store them in memory while unlocked.
+
+Clients access the key store via a Unix socket. The Unix socket is located in
+the user's runtime directory and its file permissions are only read/writable by
+the user's Unix user. When the daemon is unlocked, any client may read the key
+store pairs *without* their secret values, without user approval. When a client
+requests to read a secret value, the user is prompted to consent to disclosure
+of the secret value.
+
+If the user agrees, the daemon will look up the appropriate secret value by UUID
+in the secstore, decrypt and authenticate it, and provide it to the client
+application in plain text over the Unix socket connection.
+
+No attempt is made to authenticate the client request. It will have come from a
+process running on the user's Unix account, but if the user runs untrusted code,
+or their system is otherwise compromised, any process could request a secret
+value and cause the consent dialog to appear. It is up to the user to approve
+secret requests with appropriate scrutiny and discretion. Furthermore, nothing
+prevents the client from retaining the secret value once disclosed, or otherwise
+handling the secret value incautiously.
+
+### Hardening features
+
+The following extra steps are taken to harden the daemon:
+
+* All sensitive data is securely erased from memory after use, such as the
+  master passphrase, secret values, and so on.
+
+**Linux-specific**
+
+* In the unlocked state, the master key is retained in kernel memory via keyctl.
+  It is only present in daemon memory during cryptographic operations, and is
+  securely erased when the operations are completed. This prevents bugs which
+  could be exploited to read the daemon's memory from accessing the master key
+  when it is not in use.
+* Note that no attempt is made to lock memory (Himitsu requires more memory than
+  it is practical to lock on Linux). It is recommended to use encrypted swap to
+  reduce the risk of your key store contents being stored in plain text on swap.
+  The risk of disclosure is relatively low, as Himitsu does not use enough
+  memory to generally be a priority for Linux to swap to reclaim space, and a
+  limited amount of sensitive information is stored on idle pages.
