@@ -162,8 +162,8 @@ fn writeconf() void = {
 
 	path::set(&buf, confdir, "config.ini")!;
 	const confpath = path::string(&buf);
-	const file = match (os::create(confpath, 0o644, fs::flag::WRONLY,
-		fs::flag::EXCL)) {
+	const file = match (os::create(confpath, 0o644,
+			fs::flag::WRONLY | fs::flag::EXCL)) {
 	case let file: io::file =>
 		yield file;
 	case errors::exists =>
