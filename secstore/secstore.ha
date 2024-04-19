@@ -319,6 +319,7 @@ export fn lock(store: *secstore) void = {
 	store.state = state::SOFT_LOCKED;
 	free_keys(store);
 	free(store.entries);
+	store.entries = [];
 };
 
 // Closes the secstore, freeing any associated resources.
