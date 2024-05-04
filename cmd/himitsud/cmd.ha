@@ -168,7 +168,7 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 			return;
 		};
 
-		secstore::del(serv.store, &q)!;
+		secstore::del(serv.store, &q, strict)!;
 	};
 
 	fmt::fprintln(&buf, "end")?;

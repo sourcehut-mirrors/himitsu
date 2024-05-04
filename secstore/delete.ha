@@ -6,7 +6,7 @@ use strings;
 use uuid;
 
 // Deletes all keys from the secstore which match the given query.
-export fn del(store: *secstore, q: *query::query) (void | locked) = {
+export fn del(store: *secstore, q: *query::query, strict: bool) (void | locked) = {
 	// TODO: TOCTU the keystore key to avoid expiry race
 	if (store.key is void) {
 		return locked;
@@ -17,7 +17,7 @@ export fn del(store: *secstore, q: *query::query) (void | locked) = {
 	// it could cause problems here.
 	for (let i = 0z; i < len(store.entries); i += 1) {
 		const ent = &store.entries[i];
-		if (entry_match(ent, q, false)) { // TODO
+		if (entry_match(ent, q, strict)) {
 			delkeys(store, &store.entries[i]);
 			delete(store.entries[i]);
 			i -= 1;
