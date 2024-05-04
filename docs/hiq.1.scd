@@ -6,7 +6,7 @@ hiq - query the *himitsu*(7) key store
 
 # SYNOPSIS
 
-*hiq* [-1adDQ] [-F _field_] _query_...
+*hiq* [-1adDQs] [-F _field_] _query_...
 
 # DESCRIPTION
 
