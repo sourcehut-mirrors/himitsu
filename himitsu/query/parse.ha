@@ -51,6 +51,9 @@ export fn strerror(err: error) str = {
 	};
 };
 
+// Checks whether 'q' has no items.
+export fn is_empty(q: *query) bool = len(q.items) == 0;
+
 // Parses a query, returning its key/value pairs. The caller must pass the
 // return value to [[finish]] when they are done with it.
 export fn parse(in: io::handle) (query | error | io::error) = {
