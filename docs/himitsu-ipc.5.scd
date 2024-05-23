@@ -41,12 +41,31 @@ The following commands are recognized by the server:
 	a *key* reply for each deleted key (without secrets), followed by an
 	*end* reply. The option -s will enable the strict query mode.
 
-*query* [-ds] _query_...
+*persist* [-rs] _query_
+	Persists a query after user consent for current connection. Private
+	values that match the given query will be decrypted without user
+	consent, if the store is unlocked. The server will answer with a
+	*persist* reply.
+
+	- *-r <remember options>*: as a comma separated list that are send to
+	  the prompter. Allowed values are the strings _session_, _skip_,
+	  _refuse_, or a timeout in section as an integer. Eg.: "-r
+	  session,3600,300,refuse". The first value is the default value and
+	  should be preselected by the prompter. See the *remember* command in
+	  *himitsu-prompter(5)* for a description of the options.
+	- *-s*: will enable the strict query mode.
+
+*query* [-drs] _query_...
 	Queries the key store for keys matching the provided _query_. Matching
 	keys are returned via a series of *key* replies, terminated with an
-	*end* reply to signal the end of the list. If the -d option is provided,
-	the private values will be decrypted after requesting user consent. The
-	option -s will enable the strict query mode.
+	*end* reply to signal the end of the list.
+
+	- *-d*: the private values will be decrypted after requesting user
+	  consent.
+	- *-r <remember options>*: as a comma separated list similar to the
+	  same option of the *persist* command. If the user agrees, the entries
+	  matched by given query will be remembered for the current connection.
+	- *-s*: will enable the strict query mode.
 
 *quit*
 	Requests that the daemon terminate itself. This command is only
@@ -62,6 +81,9 @@ The following replies are sent to the client:
 
 *end*
 	Signals the end of a list of *key* replies.
+
+*persist* session|timeout <value>|skip|refuse
+	Returns the selected remember option on *persist*.
 
 *error* _message_...
 	Indicates that a requested operation resulted in an error. The _message_

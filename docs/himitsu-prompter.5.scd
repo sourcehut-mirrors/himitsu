@@ -49,7 +49,7 @@ discretion if this protocol version is suitable, and if so, proceed to issue
 additional commands; if not, it will close stdin and the prompter should exit
 with status code 1.
 
-The current protocol number is 0.0.0.
+The current protocol number is 0.0.1.
 
 ## EXIT STATUS
 
@@ -73,6 +73,11 @@ The following commands are sent from the daemon to the prompter via _stdin_.
 	Provides a key to the prompter which is related to this transaction, in
 	the format described by *KEY FORMAT* in *himitsu*(7).
 
+*query* _query_
+	Provides a query to the prompter which is related to this transaction,
+	in the format described by *QUERY SYNTAX* in *himitsu*(7). A query
+	command preceeds the *prompt persist* command.
+
 *password* correct|incorrect
 	Provides feedback in response to the *password* reply sent from the
 	prompter to the daemon. Note that following the *password* reply from
@@ -80,17 +85,37 @@ The following commands are sent from the daemon to the prompter via _stdin_.
 	verified. The prompter is encouraged to display some kind of indication
 	to the user that this process is underway.
 
-*prompt* disclose|delete
+*remember* session|timeout <value>|skip|refuse
+	Optional commands to notify the prompter of available options for
+	remembering user consent. The prompter should preselect the first
+	option received and reply with the selected one, after the *prompt*
+	command. The user consent is remembered for the client requesting it.
+
+	- *session*: Until the daemon stops.
+	- *timeout <value>*: Until value as seconds have passed or until the
+	  session ends, if latter happens earlier.
+	- *skip*: Do not remember for now, but may be asked next time.
+	- *refuse*: Do not remember and do not ask again for current session.
+	  In this case, no remember commands will be send during the remaining
+	  session for the query or keys in question.
+
+*prompt* disclose|delete|persist
 	Sent when the prompter should obtain consent from the user for the
 	desired operation, specified by the given parameter. Preceeding this
 	command will be one or more *key* commands describing the keys
-	implicated in this operation.
+	implicated in this operation, in the case of *disclose* or *delete*.
+	On *persist* a *query* command preceeds.
 
 	- *disclose*: the specified keys will be disclosed to the client,
 	  including secret values.
 	- *delete*: the specified keys will be removed from the key store
+	- *persist*: the user is asked if the specified query should be
+	  remembered. If so, future disclosures of secrets that are matched by
+	  the query will be allowed without user consent depending on the
+	  selected remember option defined at the *remember* command.
 
-	Following this command, the daemon will close _stdin_ and will wait for
+	Following this command, the daemon will wait for a answer to
+	given remember options and/or close _stdin_ and will wait for
 	the prompter to exit with a meaningful status code as described by *EXIT
 	STATUS* above.
 
@@ -144,6 +169,10 @@ The following replies are sent from the prompter to the daemon via _stdout_:
 	to complete. The prompter implementation is encouraged to provide
 	feedback to the user to indicate that the operation is underway.
 
+*remember* session|timeout <value>|skip|refuse
+	Notifies the server that the user indicated a desire to remember their
+	consent for this operation.
+
 *version* _major_._minor_._patch_
 	See *HANDSHAKE* above.
 
@@ -192,6 +221,21 @@ user's secret keys.
 => prompt disclose
 (daemon closes stdin)
 (prompter exits with status code 0)
+```
+
+Scenario 4: the keyring is unlocked and a client wants to persist a query.
+
+```
+=> version
+<= version 0.0.1
+=> query proto=web
+=> remember session
+=> remember timeout 300
+=> remember refuse
+=> prompt persist
+<= remember session
+(daemon closes stdin)
+(prompter exits with status code0)
 ```
 
 # SEE ALSO
