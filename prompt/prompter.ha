@@ -14,6 +14,7 @@ export type prompter = struct {
 	proc: exec::process,
 	stdin: io::handle,
 	stdout: io::handle,
+	version: u32,
 };
 
 // Prompter operation mode
@@ -35,22 +36,20 @@ export fn newprompter(command: str, args: []str) (prompter | error) = {
 	io::close(stdout.1)?;
 
 	fmt::fprintln(stdin.1, "version")?;
-	match (bufio::read_line(stdout.0)?) {
+	let version = match (bufio::read_line(stdout.0)?) {
 	case io::EOF =>
 		return protoerror;
 	case let buf: []u8 =>
 		defer free(buf);
 		const string = strings::fromutf8(buf)!;
-		if (string != "version 0.0.0") {
-			// XXX: Return "unsupported" error instead?
-			return protoerror;
-		};
+		yield parse_version(string)?;
 	};
 
 	return prompter {
 		proc = proc,
 		stdin = stdin.1,
 		stdout = stdout.0,
+		version = version,
 	};
 };
 
