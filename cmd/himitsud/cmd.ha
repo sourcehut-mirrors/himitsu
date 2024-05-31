@@ -81,15 +81,12 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 };
 
 fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
-	if (serv.store.state != secstore::state::UNLOCKED) {
-		const prompter = prompt::newprompter(serv.conf.prompter[0],
-			serv.conf.prompter[1..])?;
-		prompt::unlock(&prompter)?;
-		if (!prompt::wait_unlock(&prompter, serv.store)?) {
-			writefmt(client, "error Failed to unlock");
-			return;
-		};
-		prompt::close(&prompter)?;
+	let prompter = new_prompter(serv);
+	defer prompter_close(&prompter);
+
+	if (!prompter_unlock(&prompter)?) {
+		writefmt(client, "error Failed to unlock");
+		return;
 	};
 
 	const q = query::parse_items(args[1..])?;
@@ -124,46 +121,24 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const q = query::parse_items(cmd.args)?;
 	defer query::finish(&q);
 
-	let buf = memio::dynamic();
+	let prompter = new_prompter(serv);
+	defer prompter_close(&prompter);
 
-	let prompter: (prompt::prompter | void) = void;
-	defer if (prompter is prompt::prompter) {
-		prompt::close(&(prompter: prompt::prompter))!;
-	};
-	if (serv.store.state != secstore::state::UNLOCKED) {
-		const new = prompt::newprompter(serv.conf.prompter[0],
-			serv.conf.prompter[1..])?;
-		prompt::unlock(&new)?;
-		if (!prompt::wait_unlock(&new, serv.store)?) {
-			writefmt(client, "error Failed to unlock");
-			return;
-		};
-		prompter = new;
+	if (!prompter_unlock(&prompter)?) {
+		writefmt(client, "error Failed to unlock");
+		return;
 	};
 
 	const iter = secstore::query(serv.store, &q, strict);
 	let matches: []*secstore::entry = [];
 	for (let item => secstore::next(serv.store, &iter)) {
-		fmt::fprint(&buf, "key ")?;
-		secstore::write(serv.store, &buf, item, false)?;
-		io::write(&buf, ['\n'])?;
 		append(matches, item);
 	};
 
 	if (len(matches) > 0) {
-		const prompter = match (prompter) {
-		case let p: prompt::prompter =>
-			prompter = void;
-			yield p;
-		case void =>
-			yield prompt::newprompter(serv.conf.prompter[0],
-				serv.conf.prompter[1..])?;
-		};
-		for (let i = 0z; i < len(matches); i += 1) {
-			prompt::sendkey(&prompter, serv.store, matches[i])?;
-		};
-		prompt::prompt(&prompter, prompt::mode::DELETE)?;
-		if (!prompt::wait(&prompter)?) {
+		prompter_send_keys(&prompter, matches)?;
+		prompter_prompt(&prompter, prompt::mode::DELETE)?;
+		if (!prompter_wait(&prompter)?) {
 			writefmt(client, "error User declined");
 			return;
 		};
@@ -171,8 +146,7 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		secstore::del(serv.store, &q, strict)!;
 	};
 
-	fmt::fprintln(&buf, "end")?;
-	writebuf(client, memio::buffer(&buf));
+	writefmt(client, "end");
 };
 
 fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
@@ -196,19 +170,13 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		};
 	};
 
-	let prompter: (prompt::prompter | void) = void;
-	defer if (prompter is prompt::prompter) {
-		prompt::close(&(prompter: prompt::prompter))!;
-	};
-	if (serv.store.state == secstore::state::HARD_LOCKED) {
-		const new = prompt::newprompter(serv.conf.prompter[0],
-			serv.conf.prompter[1..])?;
-		prompt::unlock(&new)?;
-		if (!prompt::wait_unlock(&new, serv.store)?) {
-			writefmt(client, "error Failed to unlock");
-			return;
-		};
-		prompter = new;
+	let prompter = new_prompter(serv);
+	defer prompter_close(&prompter);
+
+	if (serv.store.state == secstore::state::HARD_LOCKED
+			&& !prompter_unlock(&prompter)?) {
+		writefmt(client, "error Failed to unlock");
+		return;
 	};
 
 	const q = query::parse_items(cmd.args)?;
@@ -221,29 +189,9 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 
 	if (len(matches) > 0 && decrypt) {
-		const prompter = match (prompter) {
-		case let p: prompt::prompter =>
-			// Take the ownership since prompt::wait will also close it
-			prompter = void;
-			yield p;
-		case void =>
-			yield prompt::newprompter(serv.conf.prompter[0],
-				serv.conf.prompter[1..])?;
-		};
-		for (let i = 0z; i < len(matches); i += 1) {
-			prompt::sendkey(&prompter, serv.store, matches[i])?;
-		};
-		if (serv.store.state == secstore::state::SOFT_LOCKED) {
-			prompt::unlock(&prompter)?;
-		};
-		prompt::prompt(&prompter, prompt::mode::DISCLOSE)?;
-		if (serv.store.state == secstore::state::SOFT_LOCKED) {
-			if (!prompt::wait_unlock(&prompter, serv.store)?) {
-				writefmt(client, "error Failed to unlock");
-				return;
-			};
-		};
-		if (!prompt::wait(&prompter)?) {
+		prompter_send_keys(&prompter, matches)?;
+		prompter_prompt(&prompter, prompt::mode::DISCLOSE)?;
+		if (!prompter_wait(&prompter)?) {
 			writefmt(client, "error User declined");
 			return;
 		};
