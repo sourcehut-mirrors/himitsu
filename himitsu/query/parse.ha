@@ -147,6 +147,59 @@ export fn dup_pub(q: *query) query = {
 	return query;
 };
 
+// Checks whether 'sub' is a sub-query of 'q'. It returns true if all
+// pairs of 'sub' are part of 'q'.
+export fn is_sub(sub: *query, q: *query) bool = {
+	for :sub (let s &.. sub.items) {
+		for (let i &..q.items) {
+			if (i.key == s.key && i.optional == s.optional
+					&& i.private == s.private
+					&& (i.private || i.value == s.value)) {
+				continue: sub;
+			};
+		};
+		return false;
+	};
+	return true;
+};
+
+@test fn is_sub() void = {
+	let q = parse_str("a=b x=y c? d!")!;
+	defer finish(&q);
+
+	assert(is_sub(&q, &q));
+
+	let s = parse_str("a=b d!")!;
+	defer finish(&s);
+	assert(is_sub(&s, &q));
+
+	let s = parse_str("a=b i! d!")!;
+	defer finish(&s);
+	assert(!is_sub(&s, &q));
+};
+
+// Checks whether 'a' is equal to 'b'.
+export fn is_equal(a: *query, b: *query) bool =
+	len(a.items) == len(b.items) && is_sub(a, b);
+
+@test fn is_equal() void = {
+	let q = parse_str("a=b x=y c? d!")!;
+	defer finish(&q);
+	assert(is_equal(&q, &q));
+
+	let s = parse_str("a=b x=y c? d!")!;
+	defer finish(&s);
+	assert(is_equal(&s, &q));
+
+	let s = parse_str("a=b x=z c? d!")!;
+	defer finish(&s);
+	assert(!is_equal(&s, &q));
+
+	let s = parse_str("a=b c? d!")!;
+	defer finish(&s);
+	assert(!is_equal(&s, &q));
+};
+
 // Frees resources associated with this query.
 export fn finish(q: *query) void = {
 	for (let item .. q.items) {
