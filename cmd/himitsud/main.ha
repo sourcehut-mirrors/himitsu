@@ -7,6 +7,8 @@ use os::exec;
 use os;
 use rt;
 use secstore;
+use strconv;
+use strings;
 use unix::signal;
 use unix;
 
@@ -19,14 +21,24 @@ let sigwrite: io::file = -1;
 export fn main() void = {
 	const cmd = getopt::parse(os::args,
 		// TODO: Add note warning against using this to himitsu man page
-		('D', "daemonize (fork) after startup"));
+		('D', "daemonize (fork) after startup"),
+		('R', "fd", "notify readiness on file descriptor"),
+	);
 	defer getopt::finish(&cmd);
 
 	let daemonize = false;
+	let ready_fd: (void|io::file) = void;
 	for (let opt &.. cmd.opts) {
 		switch (opt.0) {
 		case 'D' =>
 			daemonize = true;
+		case 'R' =>
+			match (strconv::stoi(opt.1)) {
+			case let err: (strconv::invalid | strconv::overflow) =>
+				fmt::fatalf("Invalid parameter for -R: {}.", strconv::strerror(err));
+			case let i: int =>
+				ready_fd = i;
+			};
 		case => abort();
 		};
 	};
@@ -75,6 +87,14 @@ export fn main() void = {
 	const flags = rt::fcntl(sock.sock, rt::F_GETFL, 0)!;
 	rt::fcntl(sock.sock, rt::F_SETFL, flags | rt::O_CLOEXEC)!;
 
+	match (ready_fd) {
+	case let f: io::file => {
+		io::write(f, strings::toutf8("READY=1\n"))!;
+		io::close(f)!;
+	};
+	case void => void;
+	};
+	
 	log::println("himitsud running");
 	for (dispatch(&sock)) void;
 	log::println("himitsud terminated");

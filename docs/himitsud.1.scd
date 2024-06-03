@@ -26,6 +26,8 @@ The following options are recognized by *himitsud*:
 
 *-D*
 	Daemonize (fork) the himitsud process after startup.
+*-R fd*
+	Notify readiness by writing *READY=1\n* into *fd* and then closing.
 
 # SEE ALSO
 
