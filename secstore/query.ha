@@ -1,4 +1,5 @@
 use himitsu::query;
+use strings;
 use uuid;
 
 export type iterator = struct {
@@ -36,7 +37,8 @@ export fn next(store: *secstore, iter: *iterator) (*entry | done) = {
 	return done;
 };
 
-fn entry_match(ent: *entry, query: *query::query, strict: bool) bool = {
+// Returns whether 'query' matches 'ent'.
+export fn entry_match(ent: *entry, query: *query::query, strict: bool) bool = {
 	let nmatched = 0z;
 	for (let q &.. query.items) {
 		const p = match (findpair(ent, q.key)) {
@@ -74,4 +76,28 @@ fn findpair(ent: *entry, key: str) (*pair | void) = {
 			return pair;
 		};
 	};
+};
+
+// Converts an entry to it's matching query. The caller must finish the query
+// with [[himitsu::query::finish]].
+export fn entry_to_query(ent: *entry) query::query = {
+	let q = query::query {
+		...
+	};
+	for (let p &.. ent.pairs) {
+		let (value, private) = match (p.value) {
+		case let v: str =>
+			yield (strings::dup(v), false);
+		case uuid::uuid =>
+			yield ("", true);
+		};
+
+		append(q.items, query::pair {
+			key = strings::dup(p.key),
+			value = value,
+			private = private,
+			optional = false,
+		});
+	};
+	return q;
 };
