@@ -3,8 +3,9 @@ use strings;
 use strconv;
 
 // u32 representation of the version which is `major << 16 | minor << 8 | patch`
-type version = enum u32 {
+export type version = enum u32 {
 	INIT = 0 << 16 | 0 << 8 | 0,
+	REMEMBER = 0 << 16 | 0 << 8 | 1,
 };
 
 fn parse_version(version: str) (u32 | protoerror) = {

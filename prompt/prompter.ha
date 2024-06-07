@@ -3,12 +3,14 @@ use bufio;
 use errors;
 use fmt;
 use fs;
+use himitsu::remember;
 use io;
 use memio;
 use os::exec;
 use os;
 use secstore;
 use strings;
+use strconv;
 
 export type prompter = struct {
 	proc: exec::process,
@@ -71,6 +73,68 @@ export fn sendkey(
 		yield;
 	};
 	fmt::fprintln(prompt.stdin)?;
+};
+
+// Sends recommended remember options, if the prompter supports it.
+export fn send_remember(
+	prompt: *prompter,
+	options: []remember::option,
+) (void | error) = {
+	if (prompt.version < version::REMEMBER) {
+		return;
+	};
+
+	for (let o .. options) {
+		match (o) {
+		case let t: remember::timeout =>
+			fmt::fprintln(prompt.stdin, "remember timeout", t: i64)?;
+		case let r: remember::option =>
+			fmt::fprintln(prompt.stdin, "remember",
+				remember::stroption(r: remember::option))?;
+		};
+	};
+};
+
+// Awaits a remember response. Returns void if none received.
+export fn wait_remember(prompt: *prompter) (remember::option | error) = {
+	if (prompt.version < version::REMEMBER) {
+		return remember::refuse;
+	};
+
+	let buf = match (bufio::read_line(prompt.stdout)?) {
+	case let b: []u8 =>
+		yield b;
+	case io::EOF =>
+		return remember::skip;
+	};
+
+	defer free(buf);
+
+	const string = strings::fromutf8_unsafe(buf);
+
+	const (cmd, args) = strings::cut(string, " ");
+	if (cmd != "remember") {
+		return protoerror;
+	};
+
+	const (method, args) = strings::cut(args, " ");
+	switch (method) {
+	case "session" =>
+		return remember::session;
+	case "skip" =>
+		return remember::skip;
+	case "refuse" =>
+		return remember::refuse;
+	case "timeout" =>
+		match (strconv::stou32(args)) {
+		case let t: u32 =>
+			return t: remember::timeout;
+		case strconv::error =>
+			return protoerror;
+		};
+	case =>
+		return protoerror;
+	};
 };
 
 // Sends an unlock request to the prompter.

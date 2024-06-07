@@ -1,3 +1,4 @@
+use himitsu::remember;
 use prompt;
 use secstore;
 
@@ -42,6 +43,21 @@ fn prompter_send_keys(p: *prompter, entries: []*secstore::entry) (void | prompt:
 	for (let e .. entries) {
 		prompt::sendkey(&prompter, p.serv.store, e)?;
 	};
+};
+
+fn prompter_send_remember(
+	p: *prompter,
+	rememberopts: []remember::option,
+) (void | prompt::error) = {
+	let prompter = prompter_get(p)?;
+	prompt::send_remember(&prompter, rememberopts)?;
+};
+
+fn prompter_wait_remember(
+	p: *prompter,
+) (remember::option | prompt::error) = {
+	let prompter = prompter_get(p)?;
+	return prompt::wait_remember(&prompter)?;
 };
 
 fn prompter_prompt(p: *prompter, mode: prompt::mode) (void | prompt::error) = {
