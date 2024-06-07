@@ -55,6 +55,7 @@ install:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
+	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/remember
 	mkdir -p $(DESTDIR)$(MANDIR)/man1
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man7
@@ -62,6 +63,7 @@ install:
 	install -m644 himitsu/README $(DESTDIR)$(THIRDPARTYDIR)/himitsu
 	install -m644 himitsu/client/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	install -m644 himitsu/query/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
+	install -m644 himitsu/remember/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/remember
 	install -m644 himitsud.1 $(DESTDIR)$(MANDIR)/man1/himitsud.1
 	install -m644 himitsu-store.1 $(DESTDIR)$(MANDIR)/man1/himitsu-store.1
 	install -m644 hiq.1 $(DESTDIR)$(MANDIR)/man1/hiq.1
