@@ -1,4 +1,6 @@
 use fmt;
+use himitsu::query;
+use himitsu::remember;
 use io;
 use strings;
 use unix::poll;
@@ -10,6 +12,13 @@ type state = enum {
 	WRITE_ERROR,
 };
 
+type remember = struct {
+	query: query::query,
+	kind: remember::option,
+	strict: bool,
+	timestamp: i64,
+};
+
 type client = struct {
 	server: *server,
 	sock: io::file,
@@ -17,6 +26,7 @@ type client = struct {
 	pollfd: *poll::pollfd,
 	rbuf: []u8,
 	wbuf: []u8,
+	remembers: []remember,
 };
 
 // Immediately disconnects a client, without sending them an error message.
@@ -24,6 +34,11 @@ fn disconnect(c: *client) void = {
 	io::close(c.sock)!;
 	free(c.rbuf);
 	free(c.wbuf);
+
+	for (let r &.. c.remembers) {
+		query::finish(&r.query);
+	};
+	free(c.remembers);
 
 	let serv = c.server;
 	let i = (c: uintptr - serv.clients: *[*]client: uintptr): size / size(client);

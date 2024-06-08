@@ -3,11 +3,13 @@ use dirs;
 use errors;
 use fmt;
 use himitsu::query;
+use himitsu::remember;
 use io;
 use net::unix;
 use net;
 use path;
 use shlex;
+use strconv;
 use strings;
 use memio;
 use encoding::utf8;
@@ -27,6 +29,10 @@ export type flags = enum uint {
 
 	// Enable strict query mode
 	STRICT = 1 << 1,
+};
+
+export type options = struct {
+	remember: []remember::option,
 };
 
 // All possible errors which may be returned by this module.
@@ -57,6 +63,27 @@ export fn connect() (net::socket | error) = {
 	return unix::connect(sockpath)?;
 };
 
+export fn parse_remembercmd(cmd: str) (remember::option | errors::invalid) = {
+	const (method, arg) = strings::cut(cmd, " ");
+	switch (method) {
+	case "session" =>
+		return remember::session;
+	case "skip" =>
+		return remember::skip;
+	case "refuse" =>
+		return remember::refuse;
+	case "timeout" =>
+		match (strconv::stou32(arg)) {
+		case let t: u32 =>
+			return t: remember::timeout;
+		case strconv::error =>
+			return errors::invalid;
+		};
+	case =>
+		return errors::invalid;
+	};
+};
+
 export type keyiter = struct {
 	conn: net::socket,
 	buf: memio::stream,
@@ -70,6 +97,7 @@ export fn query(
 	op: operation,
 	q: *query::query,
 	flags: flags,
+	opts: (void | options) = void,
 ) (keyiter | error) = {
 	const buf = memio::dynamic();
 	defer io::close(&buf)!;
@@ -93,6 +121,8 @@ export fn query(
 		fmt::fprint(&buf, "-s ")!;
 	};
 
+	write_remopts(&buf, opts)?;
+
 	query::unparse(&buf, q)!;
 
 	io::writeall(conn, memio::buffer(&buf))?;
@@ -101,6 +131,37 @@ export fn query(
 		conn = conn,
 		buf = memio::dynamic(),
 	};
+};
+
+fn write_remopts(
+	buf: io::handle,
+	opts: (options | void)
+) (void | hierror) = {
+	let opts: []remember::option = match (opts) {
+	case void =>
+		return;
+	case let o: options =>
+		yield o.remember;
+	};
+
+	if (len(opts) == 0) {
+		return;
+	};
+
+	fmt::fprint(buf, "-r ")!;
+	let first = true;
+	for (let r .. opts) {
+		if (!first) fmt::fprint(buf, ",")! else first = false;
+
+		match (r) {
+		case let t: remember::timeout =>
+			fmt::fprintf(buf, "{}", t)!;
+		case let p: remember::option =>
+			fmt::fprint(buf, remember::stroption(p))!;
+		};
+	};
+
+	fmt::fprint(buf, " ")!;
 };
 
 // Returns the next key from a key iterator, or void if no further keys are

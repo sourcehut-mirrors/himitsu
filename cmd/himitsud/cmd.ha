@@ -4,13 +4,16 @@ use fmt;
 use fs;
 use getopt;
 use himitsu::query;
+use himitsu::remember;
 use io;
 use log;
 use os::exec;
 use prompt;
 use secstore;
 use shlex;
+use strconv;
 use strings;
+use time;
 use unix::poll::{event};
 
 type servererror = !(io::error | fs::error | exec::error | secstore::error);
@@ -153,6 +156,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const cmd = getopt::parse(args,
 		"query the key store",
 		('d', "decrypt private keys"),
+		('r', "options", "Suggested remember options"),
 		('s', "strict match"),
 		"query..."
 	);
@@ -160,10 +164,16 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 
 	let decrypt = false;
 	let strict = false;
+	let remopts: []remember::option = [];
+	defer free(remopts);
+
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
-		switch (cmd.opts[i].0) {
+		const opt = cmd.opts[i];
+		switch (opt.0) {
 		case 'd' =>
 			decrypt = true;
+		case 'r' =>
+			remopts = parse_remopts(opt.1)?;
 		case 's' =>
 			strict = true;
 		case => abort();
@@ -184,13 +194,47 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 
 	const iter = secstore::query(serv.store, &q, strict);
 	let matches: []*secstore::entry = [];
+	defer free(matches);
+
 	for (let item => secstore::next(serv.store, &iter)) {
 		append(matches, item);
 	};
 
-	if (len(matches) > 0 && decrypt) {
-		prompter_send_keys(&prompter, matches)?;
+	let unrem: []*secstore::entry = [];
+	let entry_refused = false;
+	defer free(unrem);
+
+	if (decrypt && !is_remembered(client, &q)) {
+		unrem = filter_unremembered(client, matches, &entry_refused);
+	};
+
+	if (len(matches) > 0 && decrypt && len(unrem) > 0) {
+		if (serv.store.state == secstore::state::SOFT_LOCKED
+				&& !prompter_unlock(&prompter)?) {
+			writefmt(client, "error Failed to unlock");
+			return;
+		};
+
+		prompter_send_keys(&prompter, unrem)?;
+
+		if (prompter_version(&prompter)? >= prompt::version::REMEMBER
+				&& !entry_refused) {
+			prompter_send_remember(&prompter, remopts)?;
+		};
+
 		prompter_prompt(&prompter, prompt::mode::DISCLOSE)?;
+
+		if (prompter_version(&prompter)? >= prompt::version::REMEMBER) {
+			match (prompter_wait_remember(&prompter)?) {
+			case remember::skip => void;
+			case let r: remember::option =>
+				for (let m .. matches) {
+					let query = secstore::entry_to_query(m);
+					add_remember(client, query, r, true);
+				};
+			};
+		};
+
 		if (!prompter_wait(&prompter)?) {
 			writefmt(client, "error User declined");
 			return;
