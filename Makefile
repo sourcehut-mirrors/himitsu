@@ -59,6 +59,7 @@ install:
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man7
 	install -m755 himitsud himitsu-store hiq hiprompt-tty $(DESTDIR)$(PREFIX)/bin
+	install -m644 himitsu/README $(DESTDIR)$(THIRDPARTYDIR)/himitsu
 	install -m644 himitsu/client/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	install -m644 himitsu/query/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
 	install -m644 himitsud.1 $(DESTDIR)$(MANDIR)/man1/himitsud.1
