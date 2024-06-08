@@ -3,6 +3,7 @@ use bufio;
 use errors;
 use fmt;
 use fs;
+use himitsu::query;
 use himitsu::remember;
 use io;
 use memio;
@@ -23,6 +24,7 @@ export type prompter = struct {
 export type mode = enum {
 	DISCLOSE,
 	DELETE,
+	PERSIST,
 };
 
 // Starts a new prompter session.
@@ -137,6 +139,15 @@ export fn wait_remember(prompt: *prompter) (remember::option | error) = {
 	};
 };
 
+// Sends a query to the prompter
+export fn send_query(
+	prompt: *prompter,
+	query: *query::query,
+) (void | error) = {
+	fmt::fprintf(prompt.stdin, "query ")?;
+	query::unparse(prompt.stdin, query)?;
+};
+
 // Sends an unlock request to the prompter.
 export fn unlock(prompt: *prompter) (void | error) = {
 	fmt::fprintln(prompt.stdin, "unlock")?;
@@ -149,6 +160,8 @@ export fn prompt(prompt: *prompter, mode: mode) (void | io::error) = {
 		yield "disclose";
 	case mode::DELETE =>
 		yield "delete";
+	case mode::PERSIST =>
+		yield "persist";
 	})?;
 };
 

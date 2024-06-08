@@ -1,3 +1,4 @@
+use himitsu::query;
 use himitsu::remember;
 use prompt;
 use secstore;
@@ -43,6 +44,11 @@ fn prompter_send_keys(p: *prompter, entries: []*secstore::entry) (void | prompt:
 	for (let e .. entries) {
 		prompt::sendkey(&prompter, p.serv.store, e)?;
 	};
+};
+
+fn prompter_send_query(p: *prompter, q: *query::query) (void | prompt::error) = {
+	let prompter = prompter_get(p)?;
+	prompt::send_query(&prompter, q)?;
 };
 
 fn prompter_send_remember(

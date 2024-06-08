@@ -58,6 +58,8 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 		yield &exec_del;
 	case "query" =>
 		yield &exec_query;
+	case "persist" =>
+		yield &exec_persist;
 	case "quit" =>
 		yield &exec_quit;
 	case =>
@@ -253,6 +255,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	writebuf(client, memio::buffer(&buf));
 };
 
+
 fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	if (!serv.daemonized) {
 		writefmt(client, "error Server is not damonized, use a service manager");
@@ -260,3 +263,66 @@ fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 	serv.terminate = true;
 };
+
+fn exec_persist(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	const cmd = getopt::parse(args,
+		"persist a query for future disclosures",
+		('r', "options", "Suggested remember options"),
+		('s', "Save as strict query"),
+		"query..."
+	);
+	defer getopt::finish(&cmd);
+
+	let remopts: []remember::option = [];
+	defer free(remopts);
+
+	let strict = false;
+	for (let i = 0z; i < len(cmd.opts); i += 1) {
+		const opt = cmd.opts[i];
+		switch (opt.0) {
+		case 'r' =>
+			remopts = parse_remopts(opt.1)?;
+		case 's' =>
+			strict = true;
+		case => abort();
+		};
+	};
+
+	let prompter = new_prompter(serv);
+	defer prompter_close(&prompter);
+
+	const q = query::parse_items(cmd.args)?;
+	defer query::finish(&q);
+
+	match (find_remember(client, &q)) {
+	case remember::skip => void;
+	case let o: remember::option =>
+		writefmt(client, "persist {}", remember::stroption(o));
+		return;
+	};
+
+	if (prompter_version(&prompter)? < prompt::version::REMEMBER) {
+		writefmt(client, "error Not supported by prompter");
+		return;
+	};
+
+	prompter_send_query(&prompter, &q)?;
+	prompter_send_remember(&prompter, remopts)?;
+	prompter_prompt(&prompter, prompt::mode::PERSIST)?;
+
+	const result = prompter_wait_remember(&prompter)?;
+
+	if (!prompter_wait(&prompter)?) {
+		writefmt(client, "persist skip");
+		return;
+	};
+
+	match (result) {
+	case remember::skip =>
+		writefmt(client, "persist skip");
+	case let r: remember::option =>
+		add_remember(client, query::dup_pub(&q), r, strict);
+		writefmt(client, "persist {}", remember::stroption(r));
+	};
+};
+

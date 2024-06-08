@@ -206,3 +206,57 @@ export fn next(iter: *keyiter) (query::query | done | error) = {
 	};
 	abort("himitsu returned unexpected response");
 };
+
+// Persist remembers consent for given query, so that future calls may decrypt
+// secret data without prompting the user, if the store is unlocked.
+export fn persist(
+	conn: net::socket,
+	q: *query::query,
+	flags: flags = 0,
+	opts: (void | options) = void,
+) (remember::option | error) = {
+	const buf = memio::dynamic();
+	defer io::close(&buf)!;
+
+	fmt::fprint(&buf, "persist ")!;
+
+	if (flags & flags::STRICT != 0) {
+		fmt::fprint(&buf, "-s ")!;
+	};
+
+	write_remopts(&buf, opts)?;
+	query::unparse(&buf, q)!;
+	io::writeall(conn, memio::buffer(&buf))?;
+
+	let buf = match (bufio::read_line(conn)?) {
+	case let buf: []u8 =>
+		yield buf;
+	case io::EOF =>
+		return "Internal error": hierror;
+	};
+	defer free(buf);
+
+	const line = match (strings::fromutf8(buf)) {
+	case let s: str =>
+		yield s;
+	case utf8::invalid =>
+		return errors::invalid: io::error;
+	};
+
+	if (strings::hasprefix(line, "error ")) {
+		// TODO: leaks
+		return strings::dup(strings::sub(line, 6)): hierror: error;
+	};
+	if (strings::hasprefix(line, "persist ")) {
+		const (_, args) = strings::cut(line, " ");
+		match (parse_remembercmd(args)) {
+		case let r: remember::option =>
+			return r;
+		case errors::invalid =>
+			return "Internal error": hierror;
+		};
+	};
+
+	return "Internal error": hierror;
+};
+
