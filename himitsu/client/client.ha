@@ -105,7 +105,7 @@ export fn query(
 
 // Returns the next key from a key iterator, or void if no further keys are
 // provided.
-export fn next(iter: *keyiter) (query::query | void | error) = {
+export fn next(iter: *keyiter) (query::query | done | error) = {
 	memio::reset(&iter.buf);
 	match (bufio::read_line(iter.conn)?) {
 	case let buf: []u8 =>
@@ -113,7 +113,7 @@ export fn next(iter: *keyiter) (query::query | void | error) = {
 		free(buf);
 	case io::EOF =>
 		// XXX: This might be an error
-		return;
+		return done;
 	};
 	const string = match (memio::string(&iter.buf)) {
 	case let s: str =>
@@ -123,7 +123,7 @@ export fn next(iter: *keyiter) (query::query | void | error) = {
 	};
 	if (string == "end") {
 		io::close(&iter.buf)!;
-		return;
+		return done;
 	};
 	if (strings::hasprefix(string, "error ")) {
 		// XXX: leaks

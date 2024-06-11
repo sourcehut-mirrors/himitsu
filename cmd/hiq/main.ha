@@ -137,7 +137,7 @@ fn send(
 			yield k;
 		case let err: client::error =>
 			fmt::fatal("Error executing query:", client::strerror(err));
-		case void => break;
+		case done => break;
 		};
 		match (field) {
 		case let field: str =>
