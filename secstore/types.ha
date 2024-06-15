@@ -59,8 +59,10 @@ export type dupentry = !void;
 
 export type nullentry = !void;
 
+export type incomplete = !void;
+
 export type error = !(fs::error | io::error | badstore
-	| badpass | locked | dupentry | nullentry);
+	| badpass | locked | dupentry | nullentry | incomplete);
 
 export fn strerror(err: error) const str = {
 	match (err) {
@@ -74,6 +76,8 @@ export fn strerror(err: error) const str = {
 		return "The keystore does not allow duplicate entries";
 	case nullentry =>
 		return "The keystore does not allow empty entries";
+	case incomplete =>
+		return "All keys must have a value.";
 	case let err: fs::error =>
 		return fs::strerror(err);
 	case let err: io::error =>

@@ -340,7 +340,7 @@ fn free_keys(store: *secstore) void = {
 export fn add(
 	store: *secstore,
 	q: *query::query,
-) (*entry | locked | dupentry | nullentry) = {
+) (*entry | locked | dupentry | nullentry | incomplete) = {
 	if (store.state != state::UNLOCKED) {
 		return locked;
 	};
@@ -360,6 +360,9 @@ export fn add(
 	// TODO: Better error handling
 	let pairs: []pair = [];
 	for (let item .. q.items) {
+		if (item.value == "") {
+			return incomplete;
+		};
 		assert(item.value != "", "Invalid query submitted to secstore::add");
 		const val = if (item.private) {
 			yield add_secret(store, item.value);
