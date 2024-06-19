@@ -307,8 +307,11 @@ fn loadv1key(key: []u8, enckey: str) (keystore::key | error) = {
 	return keystore::newkey(masterkey, "secstore")!;
 };
 
-// Locks the key store, unloading the decryption keys.
-export fn lock(store: *secstore) void = {
+export fn get_state(store: *secstore) state = store.state;
+
+// Soft locks the store, unloading the decryption keys, but still keeping
+// the store entries.
+export fn softlock(store: *secstore) void = {
 	match (store.key) {
 	case let key: keystore::key =>
 		keystore::destroy(key);
@@ -317,9 +320,16 @@ export fn lock(store: *secstore) void = {
 		yield;
 	};
 	store.state = state::SOFT_LOCKED;
+};
+
+// Locks the key store, unloading the decryption keys and clearing all entries.
+export fn lock(store: *secstore) void = {
+	softlock(store);
 	free_keys(store);
 	free(store.entries);
 	store.entries = [];
+	io::seek(store.index, 0, io::whence::SET)!;
+	store.state = state::HARD_LOCKED;
 };
 
 // Closes the secstore, freeing any associated resources.

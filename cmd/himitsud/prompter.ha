@@ -29,7 +29,7 @@ fn prompter_version(p: *prompter) (u32 | prompt::error) =
 	prompter_get(p)?.version;
 
 fn prompter_unlock(p: *prompter) (bool | prompt::error) = {
-	if (p.serv.store.state == secstore::state::UNLOCKED) {
+	if (secstore::get_state(p.serv.store) == secstore::state::UNLOCKED) {
 		return true;
 	};
 

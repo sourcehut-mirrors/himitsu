@@ -60,6 +60,8 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 		yield &exec_query;
 	case "persist" =>
 		yield &exec_persist;
+	case "lock" =>
+		yield &exec_lock;
 	case "quit" =>
 		yield &exec_quit;
 	case =>
@@ -187,7 +189,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	let prompter = new_prompter(serv);
 	defer prompter_close(&prompter);
 
-	if (serv.store.state == secstore::state::HARD_LOCKED
+	if (secstore::get_state(serv.store) == secstore::state::HARD_LOCKED
 			&& !prompter_unlock(&prompter)?) {
 		writefmt(client, "error Failed to unlock");
 		return;
@@ -213,7 +215,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 
 	if (len(matches) > 0 && decrypt && len(unrem) > 0) {
-		if (serv.store.state == secstore::state::SOFT_LOCKED
+		if (secstore::get_state(serv.store) == secstore::state::SOFT_LOCKED
 				&& !prompter_unlock(&prompter)?) {
 			writefmt(client, "error Failed to unlock");
 			return;
@@ -333,3 +335,21 @@ fn exec_persist(serv: *server, client: *client, args: []str) (void | cmderror) =
 	};
 };
 
+fn exec_lock(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	const cmd = getopt::tryparse(args,
+		"lock the key store",
+		('s', "soft lock: only lock secret values"),
+		"query..."
+	)?;
+	defer getopt::finish(&cmd);
+
+	for (let i = 0z; i < len(cmd.opts); i += 1) {
+		const opt = cmd.opts[i];
+		switch (opt.0) {
+		case 's' =>
+			return secstore::softlock(serv.store);
+		case => abort();
+		};
+	};
+	return secstore::lock(serv.store);
+};
