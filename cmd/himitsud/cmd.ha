@@ -17,7 +17,7 @@ use time;
 use unix::poll::{event};
 
 type servererror = !(io::error | fs::error | exec::error | secstore::error);
-type cmderror = !(query::error | prompt::error | ...servererror);
+type cmderror = !(query::error | prompt::error | getopt::error | ...servererror);
 
 fn strerror(err: cmderror) const str = {
 	match (err) {
@@ -77,6 +77,8 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 			writefmt(client, "error {}", prompt::strerror(err));
 		case let err: query::error =>
 			writefmt(client, "error {}", strerror(err));
+		case let err: getopt::error =>
+			writefmt(client, "error Command {}", getopt::strerror(err));
 		case let err: servererror =>
 			writefmt(client, "error Internal error");
 			return err;
@@ -107,11 +109,11 @@ fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 };
 
 fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
-	const cmd = getopt::parse(args,
+	const cmd = getopt::tryparse(args,
 		"query the key store",
 		('s', "strict match"),
 		"query..."
-	);
+	)?;
 	defer getopt::finish(&cmd);
 
 	let strict = false;
@@ -155,13 +157,13 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 };
 
 fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
-	const cmd = getopt::parse(args,
+	const cmd = getopt::tryparse(args,
 		"query the key store",
 		('d', "decrypt private keys"),
 		('r', "options", "Suggested remember options"),
 		('s', "strict match"),
 		"query..."
-	);
+	)?;
 	defer getopt::finish(&cmd);
 
 	let decrypt = false;
@@ -257,6 +259,11 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 
 
 fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	const cmd = getopt::tryparse(args,
+		"Stops daemon. Only possible in daemon mode.",
+	)?;
+	defer getopt::finish(&cmd);
+
 	if (!serv.daemonized) {
 		writefmt(client, "error Server is not damonized, use a service manager");
 		return;
@@ -265,12 +272,12 @@ fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {
 };
 
 fn exec_persist(serv: *server, client: *client, args: []str) (void | cmderror) = {
-	const cmd = getopt::parse(args,
+	const cmd = getopt::tryparse(args,
 		"persist a query for future disclosures",
 		('r', "options", "Suggested remember options"),
 		('s', "Save as strict query"),
 		"query..."
-	);
+	)?;
 	defer getopt::finish(&cmd);
 
 	let remopts: []remember::option = [];
