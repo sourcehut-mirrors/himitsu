@@ -15,6 +15,12 @@ use strings;
 use memio;
 use unix::tty;
 
+type lockop = enum {
+	NONE,
+	SOFT,
+	HARD,
+};
+
 export fn main() void = {
 	let usage: [_]getopt::help = [
 		"secure key store client",
@@ -23,6 +29,8 @@ export fn main() void = {
 		('d', "decrypt private keys"),
 		('D', "delete matching keys"),
 		('F', "field", "select a field for output"),
+		('l', "soft lock the keyring"),
+		('L', "hard lock the keyring"),
 		('Q', "terminate the daemon (if started with -D)"),
 		('s', "strict query"),
 		"<query>",
@@ -34,6 +42,8 @@ export fn main() void = {
 	let flags: client::flags = 0;
 	let field: (str | void) = void;
 	let one = false;
+	let lock = lockop::NONE;
+
 	for (let opt .. cmd.opts) {
 		switch (opt.0) {
 		case '1' =>
@@ -46,6 +56,10 @@ export fn main() void = {
 			op = client::operation::DEL;
 		case 'F' =>
 			field = opt.1;
+		case 'l' =>
+			lock = lockop::SOFT;
+		case 'L' =>
+			lock = lockop::HARD;
 		case 'Q' =>
 			op = client::operation::QUIT;
 		case 's' =>
@@ -71,6 +85,16 @@ export fn main() void = {
 		};
 	};
 	defer io::close(conn)!;
+
+	if (lock != lockop::NONE) {
+		const soft = lock == lockop::SOFT;
+		match (client::lock(conn, soft)) {
+		case void =>
+			return;
+		case let err: client::error =>
+			fmt::fatal("Error executing lock:", client::strerror(err));
+		};
+	};
 
 	if (op == client::operation::ADD && len(cmd.args) == 0) {
 		if (tty::isatty(os::stderr_file) && tty::isatty(os::stdin_file)) {

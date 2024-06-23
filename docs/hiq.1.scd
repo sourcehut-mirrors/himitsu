@@ -6,7 +6,7 @@ hiq - query the *himitsu*(7) key store
 
 # SYNOPSIS
 
-*hiq* [-1adDQs] [-F _field_] _query_...
+*hiq* [-h1adDlLQs] [-F _field_] _query_...
 
 # DESCRIPTION
 
@@ -20,6 +20,9 @@ with special characters; the command line arguments are interpreted as if they
 have already been quoted properly.
 
 ## OPTIONS
+
+*-h*
+	Print help text.
 
 *-1*
 	Causes *hiq* to exit with a non-zero status code if greater than one key
@@ -43,6 +46,14 @@ have already been quoted properly.
 *-F* _field_
 	Select a specific field to print. By default, the full key is printed in
 	the format described by *KEY FORMAT* in *himitsu*(7).
+
+*-l*
+	Soft locks the keyring by removing the secret key from memory. Keeps
+	non-private data of entries in memory.
+
+*-L*
+	Hard locks the keyring by removing the secret key and all entries from
+	memory.
 
 *-Q*
 	Terminate the Himitsu daemon. Only works if *himitsud*(1) was started

@@ -260,3 +260,41 @@ export fn persist(
 	return "Internal error": hierror;
 };
 
+// Locks the keyring. If 'soft' is true, it will soft lock rather than hard
+// lock.
+export fn lock(conn: net::socket, soft: bool = false) (void | error) = {
+	const buf = memio::dynamic();
+	defer io::close(&buf)!;
+
+	fmt::fprint(&buf, "lock")!;
+
+	if (soft) {
+		fmt::fprint(&buf, " -s")!;
+	};
+	fmt::fprintln(&buf)!;
+	io::writeall(conn, memio::buffer(&buf))?;
+
+	let buf = match (bufio::read_line(conn)?) {
+	case let buf: []u8 =>
+		yield buf;
+	case io::EOF =>
+		return "Internal error": hierror;
+	};
+	defer free(buf);
+
+	const line = match (strings::fromutf8(buf)) {
+	case let s: str =>
+		yield s;
+	case utf8::invalid =>
+		return errors::invalid: io::error;
+	};
+
+	if (strings::hasprefix(line, "error ")) {
+		// TODO: leaks
+		return strings::dup(strings::sub(line, 6)): hierror: error;
+	};
+
+	if (line != "locked") {
+		return "Internal error": hierror;
+	};
+};
