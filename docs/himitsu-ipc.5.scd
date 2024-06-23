@@ -67,6 +67,13 @@ The following commands are recognized by the server:
 	  matched by given query will be remembered for the current connection.
 	- *-s*: will enable the strict query mode.
 
+*lock* [-s]
+	Locks the keyring clearing all entries and removes the secret key from
+	memory. The server will answer with the *locked* reply.
+
+	- *-s*: Soft lock: Only the secret key will be cleared. Entries without 
+	  their secret values can still be accessed.
+
 *quit*
 	Requests that the daemon terminate itself. This command is only
 	recognized if *himitsud*(1) was started with the -D flag. No reply is
@@ -84,6 +91,9 @@ The following replies are sent to the client:
 
 *persist* session|timeout <value>|skip|refuse
 	Returns the selected remember option on *persist*.
+
+*locked*
+	Indicates that the *lock* command was successful. 
 
 *error* _message_...
 	Indicates that a requested operation resulted in an error. The _message_
