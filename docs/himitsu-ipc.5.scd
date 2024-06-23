@@ -71,7 +71,7 @@ The following commands are recognized by the server:
 	Locks the keyring clearing all entries and removes the secret key from
 	memory. The server will answer with the *locked* reply.
 
-	- *-s*: Soft lock: Only the secret key will be cleared. Entries without 
+	- *-s*: Soft lock: Only the secret key will be cleared. Entries without
 	  their secret values can still be accessed.
 
 *quit*
@@ -93,7 +93,7 @@ The following replies are sent to the client:
 	Returns the selected remember option on *persist*.
 
 *locked*
-	Indicates that the *lock* command was successful. 
+	Indicates that the *lock* command was successful.
 
 *error* _message_...
 	Indicates that a requested operation resulted in an error. The _message_
