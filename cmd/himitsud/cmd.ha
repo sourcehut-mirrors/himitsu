@@ -343,13 +343,20 @@ fn exec_lock(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	)?;
 	defer getopt::finish(&cmd);
 
+	let soft = false;
 	for (let i = 0z; i < len(cmd.opts); i += 1) {
 		const opt = cmd.opts[i];
 		switch (opt.0) {
 		case 's' =>
-			return secstore::softlock(serv.store);
+			soft = true;
 		case => abort();
 		};
 	};
-	return secstore::lock(serv.store);
+
+	if (soft) {
+		secstore::softlock(serv.store);
+	} else {
+		secstore::lock(serv.store);
+	};
+	writefmt(client, "locked");
 };
