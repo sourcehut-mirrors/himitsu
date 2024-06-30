@@ -22,6 +22,18 @@ export type operation = enum uint {
 	QUIT,
 };
 
+// Secret store state.
+export type state = enum {
+	// Public entry keys decrypted and master key is stored in memory.
+	UNLOCKED,
+
+	// Public entry keys decrypted but master key is unloaded.
+	SOFT_LOCKED,
+
+	// Entries and master keys are unloaded.
+	HARD_LOCKED,
+};
+
 // Flags for query operations.
 export type flags = enum uint {
 	// Requests decryption from the Himitsu daemon.
@@ -296,5 +308,58 @@ export fn lock(conn: net::socket, soft: bool = false) (void | error) = {
 
 	if (line != "locked") {
 		return "Internal error": hierror;
+	};
+};
+
+// Request secret store state.
+export fn get_state(conn: net::socket) (state | error) = {
+	fmt::fprintln(conn, "status")?;
+
+	let buf = match (bufio::read_line(conn)?) {
+	case let buf: []u8 =>
+		yield buf;
+	case io::EOF =>
+		return "Internal error": hierror;
+	};
+	defer free(buf);
+
+	const line = match (strings::fromutf8(buf)) {
+	case let s: str =>
+		yield s;
+	case utf8::invalid =>
+		return errors::invalid: io::error;
+	};
+
+	if (strings::hasprefix(line, "error ")) {
+		// TODO: leaks
+		return strings::dup(strings::sub(line, 6)): hierror: error;
+	};
+
+	if (!strings::hasprefix(line, "status ")) {
+		return "Internal error": hierror;
+	};
+
+	let (_, args) = strings::cut(line, " ");
+	switch (args) {
+	case "unlocked" =>
+		return state::UNLOCKED;
+	case "soft_locked" =>
+		return state::SOFT_LOCKED;
+	case "hard_locked" =>
+		return state::HARD_LOCKED;
+	case =>
+		return "Internal error": hierror;
+	};
+};
+
+// String representation of 's'.
+export fn statestr(s: state) str = {
+	switch (s) {
+	case state::UNLOCKED =>
+		return "unlocked";
+	case state::SOFT_LOCKED =>
+		return "soft_locked";
+	case state::HARD_LOCKED =>
+		return "hard_locked";
 	};
 };

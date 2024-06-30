@@ -62,6 +62,8 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 		yield &exec_persist;
 	case "lock" =>
 		yield &exec_lock;
+	case "status" =>
+		yield &exec_status;
 	case "quit" =>
 		yield &exec_quit;
 	case =>
@@ -259,6 +261,23 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	writebuf(client, memio::buffer(&buf));
 };
 
+fn exec_status(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	const cmd = getopt::tryparse(args,
+		"Request status.",
+	)?;
+	defer getopt::finish(&cmd);
+
+	let statestr = switch (secstore::get_state(serv.store)) {
+	case secstore::state::UNLOCKED =>
+		yield "unlocked";
+	case secstore::state::SOFT_LOCKED =>
+		yield "soft_locked";
+	case secstore::state::HARD_LOCKED =>
+		yield "hard_locked";
+	};
+
+	writefmt(client, "status {}", statestr);
+};
 
 fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	const cmd = getopt::tryparse(args,

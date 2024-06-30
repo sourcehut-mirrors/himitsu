@@ -67,6 +67,9 @@ The following commands are recognized by the server:
 	  matched by given query will be remembered for the current connection.
 	- *-s*: will enable the strict query mode.
 
+*status*
+	Requests the secret store lock status. Responds with the *status* reply.
+
 *lock* [-s]
 	Locks the keyring clearing all entries and removes the secret key from
 	memory. The server will answer with the *locked* reply.
@@ -94,6 +97,9 @@ The following replies are sent to the client:
 
 *locked*
 	Indicates that the *lock* command was successful.
+
+*status* unlocked|soft_locked|hard_locked
+	Current key store status as reply to the *status* command.
 
 *error* _message_...
 	Indicates that a requested operation resulted in an error. The _message_
