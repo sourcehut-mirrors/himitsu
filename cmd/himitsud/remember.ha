@@ -6,29 +6,6 @@ use strconv;
 use strings;
 use time;
 
-fn parse_remopts(opts: str) ([]remember::option | prompt::protoerror) = {
-	let result: []remember::option = [];
-	for (let o .. strings::split(opts, ",")) {
-		switch (o) {
-		case "session" =>
-			append(result, remember::session);
-		case "skip" =>
-			append(result, remember::skip);
-		case "refuse" =>
-			append(result, remember::refuse);
-		case =>
-			match (strconv::stou32(o)) {
-			case let t: u32 =>
-				append(result, t: remember::timeout);
-			case strconv::error =>
-				free(result);
-				return prompt::protoerror;
-			};
-		};
-	};
-	return result;
-};
-
 fn filter_unremembered(
 	client: *client,
 	matches: []*secstore::entry,

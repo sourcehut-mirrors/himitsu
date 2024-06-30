@@ -1,4 +1,9 @@
+use errors;
 use fmt;
+use io;
+use memio;
+use strconv;
+use strings;
 
 // Remembers consent until daemon stops
 export type session = void;
@@ -30,3 +35,54 @@ export fn stroption(o: option) str = {
 	};
 };
 
+// Parse remember options passed as command arguments. Expects a comma separated
+// list.
+export fn parse_options(options: str) ([]option | errors::invalid) = {
+	let result: []option = [];
+	for (let o .. strings::split(options, ",")) {
+		switch (o) {
+		case "session" =>
+			append(result, session);
+		case "skip" =>
+			append(result, skip);
+		case "refuse" =>
+			append(result, refuse);
+		case =>
+			match (strconv::stou32(o)) {
+			case let t: u32 =>
+				append(result, t: timeout);
+			case strconv::error =>
+				free(result);
+				return errors::invalid;
+			};
+		};
+	};
+	return result;
+};
+
+// Create a comma separated list of options. Caller must free the returend
+// value.
+export fn optionsstr(options: []option) str = {
+	let buf = memio::dynamic();
+	defer io::close(&buf)!;
+	let first = true;
+	for (let o .. options) {
+		if (first) {
+			first = false;
+		} else {
+			fmt::fprint(&buf, ",")!;
+		};
+
+		match (o) {
+		case session =>
+			fmt::fprint(&buf, "session")!;
+		case refuse =>
+			fmt::fprint(&buf, "refuse")!;
+		case skip =>
+			fmt::fprint(&buf, "skip")!;
+		case let t: timeout =>
+			fmt::fprintf(&buf, "{}", t)!;
+		};
+	};
+	return strings::dup(memio::string(&buf)!);
+};

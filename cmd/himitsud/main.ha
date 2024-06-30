@@ -94,7 +94,7 @@ export fn main() void = {
 	};
 	case void => void;
 	};
-	
+
 	log::println("himitsud running");
 	for (dispatch(&sock)) void;
 	log::println("himitsud terminated");

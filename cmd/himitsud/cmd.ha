@@ -181,7 +181,13 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		case 'd' =>
 			decrypt = true;
 		case 'r' =>
-			remopts = parse_remopts(opt.1)?;
+			// XXX: errors: invalid can not be cast directly
+			remopts = match (remember::parse_options(opt.1)) {
+			case let o: []remember::option =>
+				yield o;
+			case errors::invalid =>
+				return errors::invalid: io::error;
+			};
 		case 's' =>
 			strict = true;
 		case => abort();
@@ -309,7 +315,13 @@ fn exec_persist(serv: *server, client: *client, args: []str) (void | cmderror) =
 		const opt = cmd.opts[i];
 		switch (opt.0) {
 		case 'r' =>
-			remopts = parse_remopts(opt.1)?;
+			// XXX: errors: invalid can not be cast directly
+			remopts = match (remember::parse_options(opt.1)) {
+			case let o: []remember::option =>
+				yield o;
+			case errors::invalid =>
+				return errors::invalid: io::error;
+			};
 		case 's' =>
 			strict = true;
 		case => abort();
