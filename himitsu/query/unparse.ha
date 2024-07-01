@@ -1,6 +1,8 @@
 use fmt;
 use io;
 use shlex;
+use memio;
+use strings;
 
 // Converts a Himitsu query into a string, including a newline, and writes it to
 // the given I/O handle.
@@ -28,4 +30,13 @@ export fn unparse(sink: io::handle, q: *query) (size | io::error) = {
 	};
 	z += fmt::fprintln(sink)?;
 	return z;
+};
+
+// Converts a himitsu representation into a string. The string must bee freed
+// by the caller.
+export fn unparsestr(q: *query) str = {
+	let buf = memio::dynamic();
+	defer io::close(&buf)!;
+	unparse(&buf, q)!;
+	return strings::dup(memio::string(&buf)!);
 };
