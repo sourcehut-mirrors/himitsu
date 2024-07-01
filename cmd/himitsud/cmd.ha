@@ -352,7 +352,7 @@ fn exec_persist(serv: *server, client: *client, args: []str) (void | cmderror) =
 
 	const result = prompter_wait_remember(&prompter)?;
 
-	if (!prompter_wait(&prompter)?) {
+	if (!prompter_wait(&prompter)? && !(result is remember::refuse)) {
 		writefmt(client, "persist skip");
 		return;
 	};
