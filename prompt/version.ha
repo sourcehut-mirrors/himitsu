@@ -10,11 +10,13 @@ export type version = enum u32 {
 
 fn parse_version(version: str) (u32 | protoerror) = {
 	let tokens = strings::split(version, " ");
+	defer free(tokens);
 	if (len(tokens) != 2 || tokens[0] != "version") {
 		return protoerror;
 	};
 
 	let nums = strings::split(tokens[1], ".");
+	defer free(nums);
 
 	match (version_to_u32(nums)) {
 	case let v: u32 =>

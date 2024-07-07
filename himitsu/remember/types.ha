@@ -39,7 +39,8 @@ export fn stroption(o: option) str = {
 // list.
 export fn parse_options(options: str) ([]option | errors::invalid) = {
 	let result: []option = [];
-	for (let o .. strings::split(options, ",")) {
+	let tok = strings::tokenize(options, ",");
+	for (let o => strings::next_token(&tok)) {
 		switch (o) {
 		case "session" =>
 			append(result, session);
