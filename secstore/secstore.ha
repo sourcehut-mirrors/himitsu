@@ -7,6 +7,7 @@ use crypto::random;
 use crypto;
 use dirs;
 use encoding::base64;
+use encoding::utf8;
 use errors;
 use fmt;
 use fs;
@@ -179,15 +180,18 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	const input = os::open(path::string(&buf))?;
 	defer io::close(input)!;
 	let rbuf: [os::BUFSZ]u8 = [0...];
-	const input = &bufio::init(input, rbuf, []);
+	const scan = &bufio::newscanner_static(input, rbuf);
 
-	const keydata = match (bufio::read_line(input)) {
-	case let buf: []u8 =>
-		yield strings::fromutf8(buf)!;
+	const keydata = match (bufio::scan_line(scan)) {
+	case let line: const str =>
+		yield line;
+	case let e: io::error =>
+		return e;
+	case utf8::invalid =>
+		return badstore;
 	case io::EOF =>
 		return badstore;
 	};
-	defer free(keydata);
 	const items = strings::split(keydata, ":");
 	defer free(items);
 	if (len(items) != 5 && len(items) != 7) {
@@ -283,6 +287,8 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	case let err: io::error =>
 		return err;
 	case errors::invalid =>
+		return badstore;
+	case utf8::invalid =>
 		return badstore;
 	};
 };
@@ -446,17 +452,19 @@ fn add_index(store: *secstore, entry: *entry) void = {
 };
 
 // Decrypts and loads keystore entries from the index.
-fn load_index(store: *secstore) (void | io::error | errors::invalid) = {
+fn load_index(
+	store: *secstore,
+) (void | io::error | errors::invalid | utf8::invalid) = {
 	assert(store.key is keystore::key);
 
 	let key: [32]u8 = [0...];
 	defer bytes::zero(key);
 	keystore::read(store.key as keystore::key, key);
+	let scan = &bufio::newscanner(store.index);
+	defer bufio::finish(scan);
 
-	for (let line => bufio::read_line(store.index)?) {
-		defer free(line);
-
-		const buf = memio::fixed(line);
+	for (let line => bufio::scan_line(scan)?) {
+		const buf = memio::fixed(strings::toutf8(line));
 		const dec = base64::newdecoder(&base64::std_encoding, &buf);
 
 		const plaintext = secunbox(&dec, key: []u8)?;

@@ -1,5 +1,6 @@
 use bufio;
 use dirs;
+use encoding::utf8;
 use errors;
 use fmt;
 use getopt;
@@ -100,26 +101,30 @@ export fn main() void = {
 		if (tty::isatty(os::stderr_file) && tty::isatty(os::stdin_file)) {
 			fmt::errorln("Enter new keys, one per line, then press ^d:")!;
 		};
-		for (let line => bufio::read_line(os::stdin)!) {
-			// NB. Can't defer free(line), causes a
-			// use-after-free in fmt::fatal
-			const line = match (strings::fromutf8(line)) {
-			case let s: str =>
-				yield s;
-			case =>
-				free(line);
+		let scan = bufio::newscanner(os::stdin);
+		defer bufio::finish(&scan);
+		for (let line => bufio::scan_line(&scan)) {
+			let line = match (line) {
+			case let line: const str =>
+				yield line;
+			case let e: io::error =>
+				fmt::fatal("Error reading query", io::strerror(e));
+			case utf8::invalid =>
 				fmt::fatal("Error: Query is not valid UTF-8");
 			};
+
 			const query = match (query::parse_str(line)) {
 			case let q: query::query =>
 				yield q;
 			case query::invalid =>
-				fmt::fatal("Invalid query:", line);
+				// duplicate line to avoid use after free
+				fmt::fatal("Invalid query:",
+					strings::dup(line));
 			case query::dupkeys =>
-				fmt::fatal("Duplicate keys in query:", line);
+				fmt::fatal("Duplicate keys in query:",
+					strings::dup(line));
 			};
 			defer query::finish(&query);
-			free(line);
 			send(conn, client::operation::ADD, &query, flags, field, one);
 		};
 	} else {
