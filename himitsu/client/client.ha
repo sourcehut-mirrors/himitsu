@@ -43,7 +43,9 @@ export type flags = enum uint {
 	STRICT = 1 << 1,
 };
 
+// Additional options
 export type options = struct {
+	// Desired remember options
 	remember: []remember::option,
 };
 
