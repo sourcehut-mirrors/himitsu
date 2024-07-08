@@ -6,7 +6,7 @@ himitsud - *himitsu*(7) key ring daemon
 
 # SYNOPSIS
 
-*himitsud* [-D]
+*himitsud* [-DR]
 
 # DESCRIPTION
 
