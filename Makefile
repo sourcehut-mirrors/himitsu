@@ -51,7 +51,7 @@ himitsu.7: docs/himitsu.7.scd
 clean:
 	rm -f himitsud himitsu-store hiq hiprompt-tty $(DOCS)
 
-install:
+install: $(CMDS) $(DOCS)
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
