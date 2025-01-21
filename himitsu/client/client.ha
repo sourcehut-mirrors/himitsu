@@ -118,26 +118,26 @@ export fn query(
 
 	switch (op) {
 	case operation::QUERY =>
-		fmt::fprint(&buf, "query ")!;
+		fmt::fprint(&buf, "query ")?;
 	case operation::ADD =>
-		fmt::fprint(&buf, "add ")!;
+		fmt::fprint(&buf, "add ")?;
 	case operation::DEL =>
-		fmt::fprint(&buf, "del ")!;
+		fmt::fprint(&buf, "del ")?;
 	case operation::QUIT =>
-		fmt::fprint(&buf, "quit ")!;
+		fmt::fprint(&buf, "quit ")?;
 	};
 
 	if (flags & flags::DECRYPT != 0) {
-		fmt::fprint(&buf, "-d ")!;
+		fmt::fprint(&buf, "-d ")?;
 	};
 
 	if (flags & flags::STRICT != 0) {
-		fmt::fprint(&buf, "-s ")!;
+		fmt::fprint(&buf, "-s ")?;
 	};
 
 	write_remopts(&buf, opts)?;
 
-	query::unparse(&buf, q)!;
+	query::unparse(&buf, q)?;
 
 	io::writeall(conn, memio::buffer(&buf))?;
 
@@ -150,7 +150,7 @@ export fn query(
 fn write_remopts(
 	buf: io::handle,
 	opts: (options | void)
-) (void | hierror) = {
+) (void | error) = {
 	let opts: []remember::option = match (opts) {
 	case void =>
 		return;
@@ -162,20 +162,20 @@ fn write_remopts(
 		return;
 	};
 
-	fmt::fprint(buf, "-r ")!;
+	fmt::fprint(buf, "-r ")?;
 	let first = true;
 	for (let r .. opts) {
-		if (!first) fmt::fprint(buf, ",")! else first = false;
+		if (!first) fmt::fprint(buf, ",")? else first = false;
 
 		match (r) {
 		case let t: remember::timeout =>
-			fmt::fprintf(buf, "{}", t)!;
+			fmt::fprintf(buf, "{}", t)?;
 		case let p: remember::option =>
-			fmt::fprint(buf, remember::stroption(p))!;
+			fmt::fprint(buf, remember::stroption(p))?;
 		};
 	};
 
-	fmt::fprint(buf, " ")!;
+	fmt::fprint(buf, " ")?;
 };
 
 // Returns the next key from a key iterator, or void if no further keys are
@@ -184,8 +184,8 @@ export fn next(iter: *keyiter) (query::query | done | error) = {
 	memio::reset(&iter.buf);
 	match (bufio::read_line(iter.conn)?) {
 	case let buf: []u8 =>
-		io::writeall(&iter.buf, buf)!;
-		free(buf);
+		defer free(buf);
+		io::writeall(&iter.buf, buf)?;
 	case io::EOF =>
 		// XXX: This might be an error
 		return done;
@@ -218,7 +218,7 @@ export fn next(iter: *keyiter) (query::query | done | error) = {
 			abort();
 		};
 	};
-	abort("himitsu returned unexpected response");
+	abort("himitsu returned an unexpected response");
 };
 
 // Persist remembers consent for given query, so that future calls may decrypt
@@ -232,14 +232,14 @@ export fn persist(
 	const buf = memio::dynamic();
 	defer io::close(&buf)!;
 
-	fmt::fprint(&buf, "persist ")!;
+	fmt::fprint(&buf, "persist ")?;
 
 	if (flags & flags::STRICT != 0) {
-		fmt::fprint(&buf, "-s ")!;
+		fmt::fprint(&buf, "-s ")?;
 	};
 
 	write_remopts(&buf, opts)?;
-	query::unparse(&buf, q)!;
+	query::unparse(&buf, q)?;
 	io::writeall(conn, memio::buffer(&buf))?;
 
 	let buf = match (bufio::read_line(conn)?) {
@@ -280,12 +280,12 @@ export fn lock(conn: net::socket, soft: bool = false) (void | error) = {
 	const buf = memio::dynamic();
 	defer io::close(&buf)!;
 
-	fmt::fprint(&buf, "lock")!;
+	fmt::fprint(&buf, "lock")?;
 
 	if (soft) {
-		fmt::fprint(&buf, " -s")!;
+		fmt::fprint(&buf, " -s")?;
 	};
-	fmt::fprintln(&buf)!;
+	fmt::fprintln(&buf)?;
 	io::writeall(conn, memio::buffer(&buf))?;
 
 	let buf = match (bufio::read_line(conn)?) {

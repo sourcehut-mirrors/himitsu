@@ -56,7 +56,7 @@ export fn is_empty(q: *query) bool = len(q.items) == 0;
 
 // Parses a query, returning its key/value pairs. The caller must pass the
 // return value to [[finish]] when they are done with it.
-export fn parse(in: io::handle) (query | error | io::error) = {
+export fn parse(in: io::handle) (query | error | io::error | nomem) = {
 	const data = io::drain(in)?;
 	const data = match (strings::fromutf8(data)) {
 	case let data: str =>
@@ -69,7 +69,7 @@ export fn parse(in: io::handle) (query | error | io::error) = {
 
 // Parses a query from a string, returning its key/value pairs. The caller must
 // pass the return value to [[finish]] when they are done with it.
-export fn parse_str(in: str) (query | error) = {
+export fn parse_str(in: str) (query | error | nomem) = {
 	const items = match (shlex::split(in)) {
 	case let items: []str =>
 		yield items;
@@ -82,15 +82,15 @@ export fn parse_str(in: str) (query | error) = {
 
 // Parses a list of key/value pairs which has already been split with shlex (or
 // a shell, for example when parsing a query from argv).
-export fn parse_items(items: []str) (query | error) = {
+export fn parse_items(items: []str) (query | error | nomem) = {
 	// XXX: Should do something about the case where the user specifies both
 	// ? and !
+	let keys: []str = [];
+	defer free(keys);
+
 	let query = query { ... };
 	let ok = false;
 	defer if (!ok) finish(&query);
-
-	let keys: []str = [];
-	defer free(keys);
 
 	for (let item .. items) {
 		const (key, value) = strings::cut(item, "=");
@@ -108,11 +108,12 @@ export fn parse_items(items: []str) (query | error) = {
 
 		append(query.items, pair {
 			key = strings::dup(key),
+			// TODO if dup failes here, key is leaked
 			value = strings::dup(value),
 			private = private,
 			optional = optional,
-		});
-		append(keys, key);
+		})?;
+		append(keys, key)?;
 	};
 
 	if (len(query.items) == 0) {
@@ -136,14 +137,18 @@ export fn parse_items(items: []str) (query | error) = {
 
 // Duplicates a query, but only keeps values of public key/value pairs. The
 // caller must pass the return value to [[finish]] after use.
-export fn dup_pub(q: *query) query = {
+export fn dup_pub(q: *query) (query | nomem) = {
 	let query = query { ... };
+	let ok = false;
+	defer if (!ok) finish(&query);
 	for (let p .. q.items) {
 		p.key = strings::dup(p.key);
+		// TODO if dup failes here, key is leaked
 		p.value = if (p.private) "" else strings::dup(p.value);
 
-		append(query.items, p);
+		append(query.items, p)?;
 	};
+	ok = true;
 	return query;
 };
 

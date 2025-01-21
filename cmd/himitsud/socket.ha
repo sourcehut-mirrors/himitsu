@@ -39,7 +39,7 @@ fn bind(
 	conf: *config::config,
 	sigpipe: io::file,
 	daemonize: bool,
-) server = {
+) (server | nomem) = {
 	const statedir = match (dirs::runtime()) {
 	case let err: fs::error =>
 		fmt::fatalf("Unable to initialize socket: {}", fs::strerror(err));
@@ -80,7 +80,7 @@ fn bind(
 		fd = sigpipe,
 		events = event::POLLIN,
 		...
-	}]);
+	}])?;
 
 	return server {
 		sock = sock,
@@ -155,18 +155,31 @@ fn accept(serv: *server) void = {
 		return;
 	};
 
-	append(serv.pollfd, poll::pollfd {
-		fd = sock,
-		events = event::POLLIN | event::POLLHUP,
-		...
-	});
+	match (append(serv.pollfd, poll::pollfd {
+			fd = sock,
+			events = event::POLLIN | event::POLLHUP,
+			...
+		})) {
+	case void => void;
+	case nomem =>
+		log::println("nomem when appending to pollfd; dropping client");
+		io::close(sock)!;
+		return;
+	};
+
 	const pollfd = &serv.pollfd[len(serv.pollfd) - 1];
-	append(serv.clients, client {
-		server = serv,
-		sock = sock,
-		pollfd = pollfd,
-		...
-	});
+	match (append(serv.clients, client {
+			server = serv,
+			sock = sock,
+			pollfd = pollfd,
+			...
+		})) {
+	case void => void;
+	case nomem =>
+		log::println("nomem when appending client; dropping client");
+		delete(serv.pollfd[len(serv.pollfd) - 1]);
+		io::close(sock)!;
+	};
 };
 
 fn dispatch_client(serv: *server, client: *client) void = {
@@ -199,7 +212,13 @@ fn client_readable(serv: *server, client: *client) void = {
 		disconnect(client);
 		return;
 	};
-	append(client.rbuf, buf[..z]...);
+	match (append(client.rbuf, buf[..z]...)) {
+	case void => void;
+	case nomem =>
+		disconnect(client);
+		return;
+	};
+
 	if (len(client.rbuf) >= CLIENT_MAXBUF) {
 		disconnect_error(client, "error Buffer exceeded\n");
 		return;

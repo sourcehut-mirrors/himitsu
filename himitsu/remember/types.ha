@@ -37,33 +37,38 @@ export fn stroption(o: option) str = {
 
 // Parse remember options passed as command arguments. Expects a comma separated
 // list.
-export fn parse_options(options: str) ([]option | errors::invalid) = {
+//
+// The caller must free the result after use.
+export fn parse_options(options: str) ([]option | errors::invalid | nomem) = {
 	let result: []option = [];
+	let ok = false;
+	defer if (!ok) free(result);
 	let tok = strings::tokenize(options, ",");
 	for (let o => strings::next_token(&tok)) {
 		switch (o) {
 		case "session" =>
-			append(result, session);
+			append(result, session)?;
 		case "skip" =>
-			append(result, skip);
+			append(result, skip)?;
 		case "refuse" =>
-			append(result, refuse);
+			append(result, refuse)?;
 		case =>
 			match (strconv::stou32(o)) {
 			case let t: u32 =>
-				append(result, t: timeout);
+				append(result, t: timeout)?;
 			case strconv::error =>
 				free(result);
 				return errors::invalid;
 			};
 		};
 	};
+	ok = true;
 	return result;
 };
 
 // Create a comma separated list of options. Caller must free the returend
 // value.
-export fn optionsstr(options: []option) str = {
+export fn optionsstr(options: []option) (str | nomem) = {
 	let buf = memio::dynamic();
 	defer io::close(&buf)!;
 	let first = true;

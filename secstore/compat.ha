@@ -10,7 +10,9 @@ use regex;
 //
 // The compatibility mode is required for the secstore to be operational,
 // if it has invalid entries, because of a query format change.
-fn compatquery_parse(in: io::handle) (query::query | query::error | io::error) = {
+fn compatquery_parse(
+	in: io::handle
+) (query::query | query::error | io::error | nomem) = {
 	let keyre: regex::regex = regex::compile(`^[-_A-Za-z]+$`)!;
 	defer regex::finish(&keyre);
 
@@ -55,7 +57,7 @@ fn compatquery_parse(in: io::handle) (query::query | query::error | io::error) =
 			value = strings::dup(value),
 			private = private,
 			optional = optional,
-		});
+		})?;
 	};
 
 	ok = true;

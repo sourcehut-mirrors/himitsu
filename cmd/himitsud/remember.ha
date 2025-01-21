@@ -10,8 +10,11 @@ fn filter_unremembered(
 	client: *client,
 	matches: []*secstore::entry,
 	entry_refused: *bool,
-) []*secstore::entry = {
+) ([]*secstore::entry | nomem) = {
 	let unrem: []*secstore::entry = [];
+	let ok = false;
+	defer if (!ok) free(unrem);
+
 	for (let m .. matches) {
 		let r = find_remember(client, m);
 		if (r is remember::refuse) {
@@ -21,9 +24,10 @@ fn filter_unremembered(
 		match (r) {
 		case (remember::session | remember::timeout) => void;
 		case (remember::skip | remember::refuse) =>
-			append(unrem, m);
+			append(unrem, m)?;
 		};
 	};
+	ok = true;
 	return unrem;
 };
 
@@ -32,7 +36,7 @@ fn add_remember(
 	query: query::query,
 	kind: remember::option,
 	strict: bool
-) void = {
+) (void | nomem) = {
 	if (kind is remember::skip) {
 		return;
 	};
@@ -43,7 +47,7 @@ fn add_remember(
 		strict = strict,
 		kind = kind,
 		timestamp = time::unix(now),
-	});
+	})?;
 };
 
 // Finds remember for given query or secstore entry. A remembered query matches

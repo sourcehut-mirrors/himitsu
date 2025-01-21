@@ -7,7 +7,6 @@ use bytes;
 use crypto::blake2b;
 use crypto::math;
 use endian;
-use errors::{nomem};
 use hash;
 use io;
 use types;
@@ -174,7 +173,7 @@ fn argon2(
 			&& memsize <= types::U32_MAX);
 
 		let membytes = memsize * BLOCKSZE * 8;
-		let mem: []u64 = alloc([0...], membytes);
+		let mem: []u64 = alloc([0...], membytes)?;
 		yield mem[..membytes / 8];
 	};
 	// round down memory to nearest multiple of 4 times parallel

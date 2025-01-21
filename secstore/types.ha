@@ -61,7 +61,7 @@ export type nullentry = !void;
 
 export type incomplete = !void;
 
-export type error = !(fs::error | io::error | badstore
+export type error = !(fs::error | io::error | nomem | badstore
 	| badpass | locked | dupentry | nullentry | incomplete);
 
 export fn strerror(err: error) const str = {
@@ -78,6 +78,8 @@ export fn strerror(err: error) const str = {
 		return "The keystore does not allow empty entries";
 	case incomplete =>
 		return "All keys must have a value.";
+	case nomem =>
+		return "Allocation failure";
 	case let err: fs::error =>
 		return fs::strerror(err);
 	case let err: io::error =>

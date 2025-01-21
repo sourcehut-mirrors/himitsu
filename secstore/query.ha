@@ -80,10 +80,13 @@ fn findpair(ent: *entry, key: str) (*pair | void) = {
 
 // Converts an entry to it's matching query. The caller must finish the query
 // with [[himitsu::query::finish]].
-export fn entry_to_query(ent: *entry) query::query = {
+export fn entry_to_query(ent: *entry) (query::query | nomem) = {
 	let q = query::query {
 		...
 	};
+	let ok = false;
+	defer if (!ok) query::finish(&q);
+
 	for (let p &.. ent.pairs) {
 		let (value, private) = match (p.value) {
 		case let v: str =>
@@ -97,7 +100,8 @@ export fn entry_to_query(ent: *entry) query::query = {
 			value = value,
 			private = private,
 			optional = false,
-		});
+		})?;
 	};
+	ok = true;
 	return q;
 };

@@ -66,7 +66,12 @@ export fn main() void = {
 	};
 	defer config::finish(&conf);
 
-	const sock = bind(&store, &conf, pipe.0, daemonize);
+	const sock = match (bind(&store, &conf, pipe.0, daemonize)) {
+	case let s: server =>
+		yield s;
+	case nomem =>
+		fmt::fatal(strerror(nomem));
+	};
 
 	if (daemonize) {
 		match (exec::fork()) {

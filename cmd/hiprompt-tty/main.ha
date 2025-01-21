@@ -60,7 +60,7 @@ export fn main() void = {
 		case "key" =>
 			const src = memio::fixed(strings::toutf8(args));
 			const key = query::parse(&src)!;
-			append(ctx.keys, key);
+			append(ctx.keys, key)!;
 		case "password" =>
 			if (args == "incorrect") {
 				unlock(&ctx, true);

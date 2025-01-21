@@ -75,8 +75,8 @@ fn write(client: *client, buf: []u8) void = {
 };
 
 // Writes data to the client. Duplicates the buffer.
-fn writebuf(client: *client, buf: []u8) void = {
-	write(client, alloc(buf...));
+fn writebuf(client: *client, buf: []u8) (void | nomem) = {
+	write(client, alloc(buf...)?);
 };
 
 // Writes a formatted string to the client.
@@ -84,9 +84,9 @@ fn writefmt(
 	client: *client,
 	fmt: str,
 	args: fmt::field...
-) void = {
+) (void | nomem) = {
 	let buf = fmt::asprintf(fmt, args...);
 	let buf = strings::toutf8(buf);
-	append(buf, '\n');
+	append(buf, '\n')?;
 	write(client, buf);
 };

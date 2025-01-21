@@ -16,7 +16,7 @@ use strings;
 use time;
 use unix::poll::{event};
 
-type servererror = !(io::error | fs::error | exec::error | secstore::error);
+type servererror = !(io::error | fs::error | exec::error | nomem | secstore::error);
 type cmderror = !(query::error | prompt::error | getopt::error | ...servererror);
 
 fn strerror(err: cmderror) const str = {
@@ -40,14 +40,14 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 	// TODO: Better logging of client activity
 	const args = match (shlex::split(cmd)) {
 	case shlex::syntaxerr =>
-		writefmt(client, "error Invalid command syntax");
+		writefmt(client, "error Invalid command syntax")?;
 		return;
 	case let items: []str =>
 		yield items;
 	};
 	defer strings::freeall(args);
 	if (len(args) == 0) {
-		writefmt(client, "error Invalid command syntax");
+		writefmt(client, "error Invalid command syntax")?;
 		return;
 	};
 
@@ -67,7 +67,7 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 	case "quit" =>
 		yield &exec_quit;
 	case =>
-		writefmt(client, "error Unknown command");
+		writefmt(client, "error Unknown command")?;
 		return;
 	};
 
@@ -76,15 +76,17 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 		// XXX: Probably a harec bug
 		match (err) {
 		case let err: secstore::error =>
-			writefmt(client, "error {}", secstore::strerror(err));
+			writefmt(client, "error {}", secstore::strerror(err))?;
 		case let err: prompt::error =>
-			writefmt(client, "error {}", prompt::strerror(err));
+			writefmt(client, "error {}", prompt::strerror(err))?;
 		case let err: query::error =>
-			writefmt(client, "error {}", strerror(err));
+			writefmt(client, "error {}", strerror(err))?;
 		case let err: getopt::error =>
-			writefmt(client, "error Command {}", getopt::strerror(err));
+			writefmt(client, "error Command {}", getopt::strerror(err))?;
+		case nomem =>
+			writefmt(client, "error Out of memory")?;
 		case let err: servererror =>
-			writefmt(client, "error Internal error");
+			writefmt(client, "error Internal error")?;
 			return err;
 		};
 	case void => yield;
@@ -96,7 +98,7 @@ fn exec_add(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	defer prompter_close(&prompter);
 
 	if (!prompter_unlock(&prompter)?) {
-		writefmt(client, "error Failed to unlock");
+		writefmt(client, "error Failed to unlock")?;
 		return;
 	};
 
@@ -136,28 +138,28 @@ fn exec_del(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	defer prompter_close(&prompter);
 
 	if (!prompter_unlock(&prompter)?) {
-		writefmt(client, "error Failed to unlock");
+		writefmt(client, "error Failed to unlock")?;
 		return;
 	};
 
 	const iter = secstore::query(serv.store, &q, strict);
 	let matches: []*secstore::entry = [];
 	for (let item => secstore::next(serv.store, &iter)) {
-		append(matches, item);
+		append(matches, item)?;
 	};
 
 	if (len(matches) > 0) {
 		prompter_send_keys(&prompter, matches)?;
 		prompter_prompt(&prompter, prompt::mode::DELETE)?;
 		if (!prompter_wait(&prompter)?) {
-			writefmt(client, "error User declined");
+			writefmt(client, "error User declined")?;
 			return;
 		};
 
 		secstore::del(serv.store, &q, strict)!;
 	};
 
-	writefmt(client, "end");
+	writefmt(client, "end")?;
 };
 
 fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
@@ -199,7 +201,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 
 	if (secstore::get_state(serv.store) == secstore::state::HARD_LOCKED
 			&& !prompter_unlock(&prompter)?) {
-		writefmt(client, "error Failed to unlock");
+		writefmt(client, "error Failed to unlock")?;
 		return;
 	};
 
@@ -211,7 +213,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	defer free(matches);
 
 	for (let item => secstore::next(serv.store, &iter)) {
-		append(matches, item);
+		append(matches, item)?;
 	};
 
 	let unrem: []*secstore::entry = [];
@@ -219,13 +221,13 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	defer free(unrem);
 
 	if (decrypt && !is_remembered(client, &q)) {
-		unrem = filter_unremembered(client, matches, &entry_refused);
+		unrem = filter_unremembered(client, matches, &entry_refused)?;
 	};
 
 	if (len(matches) > 0 && decrypt && len(unrem) > 0) {
 		if (secstore::get_state(serv.store) == secstore::state::SOFT_LOCKED
 				&& !prompter_unlock(&prompter)?) {
-			writefmt(client, "error Failed to unlock");
+			writefmt(client, "error Failed to unlock")?;
 			return;
 		};
 
@@ -243,14 +245,14 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 			case remember::skip => void;
 			case let r: remember::option =>
 				for (let m .. matches) {
-					let query = secstore::entry_to_query(m);
-					add_remember(client, query, r, true);
+					let query = secstore::entry_to_query(m)?;
+					add_remember(client, query, r, true)?;
 				};
 			};
 		};
 
 		if (!prompter_wait(&prompter)?) {
-			writefmt(client, "error User declined");
+			writefmt(client, "error User declined")?;
 			return;
 		};
 	};
@@ -264,7 +266,7 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	};
 	fmt::fprintln(&buf, "end")?;
 
-	writebuf(client, memio::buffer(&buf));
+	writebuf(client, memio::buffer(&buf))?;
 };
 
 fn exec_status(serv: *server, client: *client, args: []str) (void | cmderror) = {
@@ -282,7 +284,7 @@ fn exec_status(serv: *server, client: *client, args: []str) (void | cmderror) = 
 		yield "hard_locked";
 	};
 
-	writefmt(client, "status {}", statestr);
+	writefmt(client, "status {}", statestr)?;
 };
 
 fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {
@@ -292,7 +294,7 @@ fn exec_quit(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	defer getopt::finish(&cmd);
 
 	if (!serv.daemonized) {
-		writefmt(client, "error Server is not damonized, use a service manager");
+		writefmt(client, "error Server is not damonized, use a service manager")?;
 		return;
 	};
 	serv.terminate = true;
@@ -337,12 +339,12 @@ fn exec_persist(serv: *server, client: *client, args: []str) (void | cmderror) =
 	match (find_remember(client, &q)) {
 	case remember::skip => void;
 	case let o: remember::option =>
-		writefmt(client, "persist {}", remember::stroption(o));
+		writefmt(client, "persist {}", remember::stroption(o))?;
 		return;
 	};
 
 	if (prompter_version(&prompter)? < prompt::version::REMEMBER) {
-		writefmt(client, "error Not supported by prompter");
+		writefmt(client, "error Not supported by prompter")?;
 		return;
 	};
 
@@ -353,16 +355,16 @@ fn exec_persist(serv: *server, client: *client, args: []str) (void | cmderror) =
 	const result = prompter_wait_remember(&prompter)?;
 
 	if (!prompter_wait(&prompter)? && !(result is remember::refuse)) {
-		writefmt(client, "persist skip");
+		writefmt(client, "persist skip")?;
 		return;
 	};
 
 	match (result) {
 	case remember::skip =>
-		writefmt(client, "persist skip");
+		writefmt(client, "persist skip")?;
 	case let r: remember::option =>
-		add_remember(client, query::dup_pub(&q), r, strict);
-		writefmt(client, "persist {}", remember::stroption(r));
+		add_remember(client, query::dup_pub(&q)?, r, strict)?;
+		writefmt(client, "persist {}", remember::stroption(r))?;
 	};
 };
 
@@ -389,5 +391,5 @@ fn exec_lock(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	} else {
 		secstore::lock(serv.store);
 	};
-	writefmt(client, "locked");
+	writefmt(client, "locked")?;
 };

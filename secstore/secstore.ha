@@ -356,7 +356,7 @@ fn free_keys(store: *secstore) void = {
 export fn add(
 	store: *secstore,
 	q: *query::query,
-) (*entry | locked | dupentry | nullentry | incomplete) = {
+) (*entry | error) = {
 	if (store.state != state::UNLOCKED) {
 		return locked;
 	};
@@ -365,7 +365,7 @@ export fn add(
 		return nullentry;
 	};
 
-	const checkq = query::dup_pub(q);
+	const checkq = query::dup_pub(q)?;
 	defer query::finish(&checkq);
 
 	let it = query(store, &checkq, true);
@@ -373,7 +373,10 @@ export fn add(
 		return dupentry;
 	};
 
-	let pairs: []pair = [];
+	let e = entry { pairs = [] };
+	let ok = false;
+	if (!ok) entry_finish(&e);
+
 	for (let item .. q.items) {
 		if (item.value == "") {
 			return incomplete;
@@ -383,14 +386,13 @@ export fn add(
 		} else {
 			yield strings::dup(item.value);
 		};
-		append(pairs, pair {
+		// TODO if key dup fails, val dup is leaked
+		append(e.pairs, pair {
 			key = strings::dup(item.key),
 			value = val,
-		});
+		})?;
 	};
-	append(store.entries, entry {
-		pairs = pairs,
-	});
+	append(store.entries, e)?;
 	let entry = &store.entries[len(store.entries) - 1];
 	add_index(store, entry);
 	return entry;
@@ -454,7 +456,7 @@ fn add_index(store: *secstore, entry: *entry) void = {
 // Decrypts and loads keystore entries from the index.
 fn load_index(
 	store: *secstore,
-) (void | io::error | errors::invalid | utf8::invalid) = {
+) (void | io::error | errors::invalid | utf8::invalid | nomem) = {
 	assert(store.key is keystore::key);
 
 	let key: [32]u8 = [0...];
@@ -481,20 +483,22 @@ fn load_index(
 		};
 		defer query::finish(&q);
 
-		let pairs: []pair = [];
+		let e = entry { pairs = [] };
+		let ok = false;
+		defer if (!ok) entry_finish(&e);
+
 		for (let item .. q.items) {
 			const val = if (item.private) {
 				yield uuid::decodestr(item.value)!;
 			} else {
 				yield strings::dup(item.value);
 			};
-			append(pairs, pair {
+			append(e.pairs, pair {
 				key = strings::dup(item.key),
 				value = val,
-			});
+			})?;
 		};
-		append(store.entries, entry {
-			pairs = pairs,
-		});
+		ok = true;
+		append(store.entries, e)?;
 	};
 };
