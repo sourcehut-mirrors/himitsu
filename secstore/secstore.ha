@@ -180,7 +180,8 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	const input = os::open(path::string(&buf))?;
 	defer io::close(input)!;
 	let rbuf: [os::BUFSZ]u8 = [0...];
-	const scan = &bufio::newscanner_static(input, rbuf);
+	const scan = &bufio::newscanner_static(input, rbuf,
+		bufio::scan_options::EOF_GREEDY);
 
 	const keydata = match (bufio::scan_line(scan)) {
 	case let line: const str =>
