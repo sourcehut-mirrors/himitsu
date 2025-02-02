@@ -6,7 +6,7 @@ hiq - query the *himitsu*(7) key store
 
 # SYNOPSIS
 
-*hiq* [-h1adDlLQs] [-F _field_] _query_...
+*hiq* [-h1adlLQRs] [-F _field_] _query_...
 
 # DESCRIPTION
 
@@ -39,10 +39,6 @@ have already been quoted properly.
 *-d*
 	Request decryption of secret keys.
 
-*-D*
-	Delete all keys matching the query. The user is prompted to consent
-	before this operation is committed.
-
 *-F* _field_
 	Select a specific field to print. By default, the full key is printed in
 	the format described by *KEY FORMAT* in *himitsu*(7).
@@ -58,6 +54,10 @@ have already been quoted properly.
 *-Q*
 	Terminate the Himitsu daemon. Only works if *himitsud*(1) was started
 	with the -D flag.
+
+*-R*
+	Remove all keys from the key store matching the query. The user is
+	prompted to consent before this operation is committed.
 
 *-s*
 	Enable strict query mode. Entries must not have more keys than specified
@@ -94,7 +94,7 @@ proto=web host=example.org user=jdoe password!=hunter2
 To delete all keys matching *host=example.org*:
 
 ```
-$ hiq -D host=example.org
+$ hiq -R host=example.org
 ```
 
 # SEE ALSO

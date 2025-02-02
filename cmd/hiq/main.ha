@@ -28,11 +28,11 @@ export fn main() void = {
 		('1', "only accept one match"),
 		('a', "add a key"),
 		('d', "decrypt private keys"),
-		('D', "delete matching keys"),
 		('F', "field", "select a field for output"),
 		('l', "soft lock the keyring"),
 		('L', "hard lock the keyring"),
 		('Q', "terminate the daemon (if started with -D)"),
+		('R', "remove matching keys from the key store"),
 		('s', "strict query"),
 		"<query>",
 	];
@@ -53,8 +53,6 @@ export fn main() void = {
 			op = client::operation::ADD;
 		case 'd' =>
 			flags |= client::flags::DECRYPT;
-		case 'D' =>
-			op = client::operation::DEL;
 		case 'F' =>
 			field = opt.1;
 		case 'l' =>
@@ -63,6 +61,8 @@ export fn main() void = {
 			lock = lockop::HARD;
 		case 'Q' =>
 			op = client::operation::QUIT;
+		case 'R' =>
+			op = client::operation::DEL;
 		case 's' =>
 			flags |= client::flags::STRICT;
 		case =>
