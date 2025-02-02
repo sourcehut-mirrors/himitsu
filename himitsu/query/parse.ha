@@ -246,7 +246,6 @@ export fn finish(q: *query) void = {
 		for (let j = 0z; j < len(result.items); j += 1) {
 			const got = result.items[i];
 			const expect = &expected[i];
-			fmt::errorln("got.key", got.key, expect.0)!;
 			assert(got.key == expect.0);
 			assert(got.value == expect.1);
 			assert(got.private == expect.2);
