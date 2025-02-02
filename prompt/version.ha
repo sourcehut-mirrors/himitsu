@@ -9,27 +9,42 @@ export type version = enum u32 {
 };
 
 fn parse_version(version: str) (u32 | protoerror) = {
-	let tokens = strings::split(version, " ");
-	defer free(tokens);
-	if (len(tokens) != 2 || tokens[0] != "version") {
+	let (cmd, version) = strings::cut(version, " ");
+	if (cmd != "version") {
 		return protoerror;
 	};
 
-	let nums = strings::split(tokens[1], ".");
-	defer free(nums);
+	let it = strings::tokenize(version, ".");
+	let n: size = 0;
+	let result: u32 = 0;
+	for (let v => strings::next_token(&it)) {
+		if (n > 3) {
+			return protoerror;
+		};
 
-	match (version_to_u32(nums)) {
-	case let v: u32 =>
-		return v;
-	case strconv::error =>
+		match (strconv::stou8(v)) {
+		case let part: u8 =>
+			result |= (part: u32 << (16 - (n*8)): u8);
+		case =>
+			return protoerror;
+		};
+
+		n += 1;
+	};
+
+	if (n != 3) {
 		return protoerror;
 	};
+
+	return result;
 };
 
-fn version_to_u32(v: []str) (u32 | strconv::error | protoerror) = {
-	if (len(v) != 3) return protoerror;
-
-	return strconv::stou8(v[0])?: u32 << 16
-		| strconv::stou8(v[1])?: u32 << 8
-		| strconv::stou8(v[2])?;
+@test fn parse_version() void = {
+	assert(parse_version("version 1.2.3")! == 66051u32);
+	assert(parse_version("") is protoerror);
+	assert(parse_version("version") is protoerror);
+	assert(parse_version("version 1 2") is protoerror);
+	assert(parse_version("verson 1.2.3") is protoerror);
+	assert(parse_version("version 1.2.3.4") is protoerror);
+	assert(parse_version("version 1.2.344") is protoerror);
 };

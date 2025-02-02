@@ -93,26 +93,27 @@ export fn parse_items(items: []str) (query | error | nomem) = {
 	defer if (!ok) finish(&query);
 
 	for (let item .. items) {
+		append(query.items, pair {
+			optional = false,
+			private = false,
+			...
+		})?;
+		let pair = &query.items[len(query.items) - 1];
+
 		const (key, value) = strings::cut(item, "=");
-		let optional = false, private = false;
 		if (strings::hassuffix(key, "!")) {
-			private = true;
+			pair.private = true;
 		};
 		if (strings::hassuffix(key, "?")) {
-			optional = true;
+			pair.optional = true;
 		};
 		key = strings::trim(key, '?', '!');
 		if (!regex::test(&keyre, key)) {
 			return invalid;
 		};
 
-		append(query.items, pair {
-			key = strings::dup(key),
-			// TODO if dup failes here, key is leaked
-			value = strings::dup(value),
-			private = private,
-			optional = optional,
-		})?;
+		pair.key = strings::dup(key)?;
+		pair.value = strings::dup(value)?;
 		append(keys, key)?;
 	};
 
@@ -142,11 +143,15 @@ export fn dup_pub(q: *query) (query | nomem) = {
 	let ok = false;
 	defer if (!ok) finish(&query);
 	for (let p .. q.items) {
-		p.key = strings::dup(p.key);
-		// TODO if dup failes here, key is leaked
-		p.value = if (p.private) "" else strings::dup(p.value);
+		let pairok = false;
+		p.value = if (p.private) "" else strings::dup(p.value)?;
+		defer if (!pairok) free(p.value);
+
+		p.key = strings::dup(p.key)?;
+		defer if (!pairok) free(p.key);
 
 		append(query.items, p)?;
+		pairok = true;
 	};
 	ok = true;
 	return query;
@@ -241,6 +246,7 @@ export fn finish(q: *query) void = {
 		for (let j = 0z; j < len(result.items); j += 1) {
 			const got = result.items[i];
 			const expect = &expected[i];
+			fmt::errorln("got.key", got.key, expect.0)!;
 			assert(got.key == expect.0);
 			assert(got.value == expect.1);
 			assert(got.private == expect.2);

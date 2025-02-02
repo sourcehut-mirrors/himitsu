@@ -6,7 +6,7 @@ use strings;
 use uuid;
 
 // Deletes all keys from the secstore which match the given query.
-export fn del(store: *secstore, q: *query::query, strict: bool) (void | locked) = {
+export fn del(store: *secstore, q: *query::query, strict: bool) (void | locked | nomem) = {
 	// TODO: TOCTU the keystore key to avoid expiry race
 	if (store.key is void) {
 		return locked;
@@ -28,7 +28,7 @@ export fn del(store: *secstore, q: *query::query, strict: bool) (void | locked) 
 
 	let buf = path::init()!;
 	path::set(&buf, store.dir, "index")!;
-	const oldpath = strings::dup(path::string(&buf));
+	const oldpath = strings::dup(path::string(&buf))?;
 	defer free(oldpath);
 	path::push(&buf, "..", "index.1")!;
 

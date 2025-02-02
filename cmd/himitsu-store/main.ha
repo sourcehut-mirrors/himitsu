@@ -270,14 +270,14 @@ fn checkhimitsud() bool = {
 
 // Generates a new master key and re-encrypts the secstore.
 export fn reencrypt_move(oldpass: []u8, newpass: []u8) (void | secstore::error)  = {
-	let olddir = strings::dup(dirs::data("himitsu"));
+	let olddir = strings::dup(dirs::data("himitsu"))?;
 	fmt::errorln("Unlocking store at", olddir)!;
 	let oldstore = secstore::openat(olddir)?;
 	secstore::unlock(&oldstore, oldpass)?;
 	let closed = false;
 	defer if (!closed) secstore::close(&oldstore);
 
-	let newdir = strings::dup(dirs::data("himitsu.new"));
+	let newdir = strings::dup(dirs::data("himitsu.new"))?;
 	fmt::errorln("Creating new store at", newdir)!;
 	let store = secstore::createat(newpass, newdir)!;
 	defer if (!closed) secstore::close(&store);
@@ -304,9 +304,9 @@ export fn reencrypt_move(oldpass: []u8, newpass: []u8) (void | secstore::error) 
 
 	fmt::errorln("Done!")!;
 
-	let dir = strings::dup(dirs::data("himitsu"));
+	let dir = strings::dup(dirs::data("himitsu"))?;
 	defer free(dir);
-	let dirold = strings::dup(dirs::data("himitsu.old"));
+	let dirold = strings::dup(dirs::data("himitsu.old"))?;
 	defer free(dirold);
 
 	fmt::errorln("Backing up current store to", dirold)!;
@@ -318,7 +318,7 @@ export fn reencrypt_move(oldpass: []u8, newpass: []u8) (void | secstore::error) 
 	};
 
 	fmt::errorln("Moving new store to", dir)!;
-	let dirnew = strings::dup(dirs::data("himitsu.new"));
+	let dirnew = strings::dup(dirs::data("himitsu.new"))?;
 	defer free(dirnew);
 	match (os::rename(dirnew, dir)) {
 	case let e: fs::error =>

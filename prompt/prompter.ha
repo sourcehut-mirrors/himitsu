@@ -189,7 +189,7 @@ export fn wait_unlock(
 		case secstore::badpass =>
 			fmt::fprintln(prompt.stdin, "password incorrect")?;
 		case let err: secstore::error =>
-			abort("Unexpected secstore error");
+			fmt::fatal("Unexpected secstore error", secstore::strerror(err));
 		};
 	};
 	return false;

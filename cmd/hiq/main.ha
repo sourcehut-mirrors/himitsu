@@ -119,10 +119,10 @@ export fn main() void = {
 			case query::invalid =>
 				// duplicate line to avoid use after free
 				fmt::fatal("Invalid query:",
-					strings::dup(line));
+					strings::dup(line)!);
 			case query::dupkeys =>
 				fmt::fatal("Duplicate keys in query:",
-					strings::dup(line));
+					strings::dup(line)!);
 			};
 			defer query::finish(&query);
 			send(conn, client::operation::ADD, &query, flags, field, one);

@@ -39,25 +39,24 @@ fn compatquery_parse(
 	defer if (!ok) query::finish(&q);
 
 	for (let item .. items) {
+		append(q.items, query::pair {
+			...
+		})?;
+		let p = &q.items[len(q.items)-1];
+
 		const (key, value) = strings::cut(item, "=");
-		let optional = false, private = false;
 		if (strings::hassuffix(key, "!")) {
-			private = true;
+			p.private = true;
 		};
 		if (strings::hassuffix(key, "?")) {
-			optional = true;
+			p.optional = true;
 		};
 		key = strings::trim(key, '?', '!');
 		if (!regex::test(&keyre, key)) {
 			return query::invalid;
 		};
-
-		append(q.items, query::pair {
-			key = strings::dup(key),
-			value = strings::dup(value),
-			private = private,
-			optional = optional,
-		})?;
+		p.key = strings::dup(key)?;
+		p.value = strings::dup(value)?;
 	};
 
 	ok = true;

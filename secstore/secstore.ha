@@ -35,7 +35,7 @@ type keyversion = enum u8 {
 // Initializes a new secstore using the provided passphrase. The caller should
 // call [[close]] when they're done with it.
 export fn create(passphrase: []u8) (secstore | error) = {
-	let dir = strings::dup(dirs::data("himitsu"));
+	let dir = strings::dup(dirs::data("himitsu"))?;
 	return createat(passphrase, dir);
 };
 
@@ -152,7 +152,7 @@ fn secunbox(src: io::handle, key: (keystore::key | []u8)) ([]u8 | io::error) = {
 // Opens the secstore. The caller should call [[unlock]] to decrypt it, and
 // [[close]] when they're done with it.
 export fn open() (secstore | error) = {
-	let dir = strings::dup(dirs::data("himitsu"));
+	let dir = strings::dup(dirs::data("himitsu"))?;
 	return openat(dir);
 };
 
@@ -192,7 +192,7 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	case io::EOF =>
 		return badstore;
 	};
-	const items = strings::split(keydata, ":");
+	const items = strings::split(keydata, ":")?;
 	defer free(items);
 	if (len(items) != 5 && len(items) != 7) {
 		return badstore;
@@ -381,16 +381,17 @@ export fn add(
 		if (item.value == "") {
 			return incomplete;
 		};
-		const val = if (item.private) {
+		append(e.pairs, pair {
+			key = "",
+			value = "",
+		})?;
+		let p = &e.pairs[len(e.pairs)-1];
+		p.key = strings::dup(item.key)?;
+		p.value = if (item.private) {
 			yield add_secret(store, item.value);
 		} else {
-			yield strings::dup(item.value);
+			yield strings::dup(item.value)?;
 		};
-		// TODO if key dup fails, val dup is leaked
-		append(e.pairs, pair {
-			key = strings::dup(item.key),
-			value = val,
-		})?;
 	};
 	append(store.entries, e)?;
 	let entry = &store.entries[len(store.entries) - 1];
@@ -400,6 +401,7 @@ export fn add(
 
 // Encrypts and stores a secret value, returning its assigned UUID.
 fn add_secret(store: *secstore, val: str) uuid::uuid = {
+	// TODO error handling
 	assert(store.key is keystore::key);
 
 	const id = uuid::generate();
@@ -411,7 +413,7 @@ fn add_secret(store: *secstore, val: str) uuid::uuid = {
 	const file = os::create(path::string(&buf), 0o600)!;
 	defer io::close(file)!;
 
-	let plain = strings::toutf8(strings::dup(val));
+	let plain = strings::toutf8(strings::dup(val)!);
 	defer {
 		bytes::zero(plain);
 		free(plain);
@@ -488,15 +490,17 @@ fn load_index(
 		defer if (!ok) entry_finish(&e);
 
 		for (let item .. q.items) {
-			const val = if (item.private) {
+			append(e.pairs, pair {
+				key = "",
+				value = "",
+			})?;
+			let p = &e.pairs[len(e.pairs) - 1];
+			p.key = strings::dup(item.key)?;
+			p.value = if (item.private) {
 				yield uuid::decodestr(item.value)!;
 			} else {
-				yield strings::dup(item.value);
+				yield strings::dup(item.value)?;
 			};
-			append(e.pairs, pair {
-				key = strings::dup(item.key),
-				value = val,
-			})?;
 		};
 		ok = true;
 		append(store.entries, e)?;

@@ -88,19 +88,19 @@ export fn entry_to_query(ent: *entry) (query::query | nomem) = {
 	defer if (!ok) query::finish(&q);
 
 	for (let p &.. ent.pairs) {
-		let (value, private) = match (p.value) {
-		case let v: str =>
-			yield (strings::dup(v), false);
-		case uuid::uuid =>
-			yield ("", true);
-		};
-
 		append(q.items, query::pair {
-			key = strings::dup(p.key),
-			value = value,
-			private = private,
-			optional = false,
+			...
 		})?;
+		let i = &q.items[len(q.items)-1];
+		i.key = strings::dup(p.key)?;
+		i.optional = false;
+
+		match (p.value) {
+		case let v: str =>
+			i.value = strings::dup(v)?;
+		case uuid::uuid =>
+			i.private =true;
+		};
 	};
 	ok = true;
 	return q;
