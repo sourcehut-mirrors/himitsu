@@ -49,7 +49,7 @@ discretion if this protocol version is suitable, and if so, proceed to issue
 additional commands; if not, it will close stdin and the prompter should exit
 with status code 1.
 
-The current protocol number is 0.0.1.
+The current protocol number is 0.0.2.
 
 ## EXIT STATUS
 
@@ -99,7 +99,7 @@ The following commands are sent from the daemon to the prompter via _stdin_.
 	  In this case, no remember commands will be send during the remaining
 	  session for the query or keys in question.
 
-*prompt* disclose|delete|persist
+*prompt* disclose|delete|persist|update
 	Sent when the prompter should obtain consent from the user for the
 	desired operation, specified by the given parameter. Preceeding this
 	command will be one or more *key* commands describing the keys
@@ -113,6 +113,8 @@ The following commands are sent from the daemon to the prompter via _stdin_.
 	  remembered. If so, future disclosures of secrets that are matched by
 	  the query will be allowed without user consent depending on the
 	  selected remember option defined at the *remember* command.
+	- *update*: the user is asked, if the entries provided by *key* should
+	  be updated according to the _query_ provided by *update*.
 
 	Following this command, the daemon will wait for a answer to
 	given remember options and/or close _stdin_ and will wait for
@@ -150,6 +152,16 @@ The following commands are sent from the daemon to the prompter via _stdin_.
 
 	In either situation, if the user declines to unlock the keyring, the
 	prompter should exit with status code 1.
+
+*update* _query_
+	Sends an update request to the prompter. The query contains the changes
+	that will be applied to all entries that follow using the *key* command.
+
+	The query contains all pairs that will be changed in the entries in
+	question. If a pair has a value it will be changed or added. If it
+	doesn't have a value, it will be removed from the entries. Note that
+	private values won't be sent to the prompter and will have the
+	placeholder *changed*.
 
 *version*
 	See *HANDSHAKE* above.
@@ -236,6 +248,28 @@ Scenario 4: the keyring is unlocked and a client wants to persist a query.
 (daemon closes stdin)
 (prompter exits with status code0)
 ```
+
+Scenario 5: the keyring is unlocked and a client would like to delete the
+comment and change the values of user and password. Note that when changing a
+secret key, it will have the placeholder string "changed" instead of the
+actual secret.
+
+```
+=> version
+<= version 0.0.2
+=> update user=johndoe password!=changed comment
+=> key proto=web host=example.org user=jdoe password! comment=old
+=> prompt update
+(daemon closes stdin)
+```
+
+# VERSION CHANGELOG
+
+*0.0.1*
+	Introduces the *remember* command and the persist option for *prompt*.
+
+*0.0.2*
+	Introduces the *update* command and the update option for *prompt*.
 
 # SEE ALSO
 
