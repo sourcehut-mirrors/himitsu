@@ -7,6 +7,9 @@ export type key = query::query;
 // A query command, sending a query associated with the prompter transaction.
 export type query = query::query;
 
+// An update command, sending a query associated with the prompter transaction.
+export type update = query::query;
+
 // A password command, indicating the result of an unlock operation. True if the
 // password was correct.
 export type password = bool;
@@ -17,11 +20,13 @@ export type password = bool;
 export type remember = remember::option;
 
 // Prompt the user to take an action: disclose one or more [[key]]s, delete one
-// or more [[key]]s, or answer a request to remember a [[query]].
+// or more [[key]]s, answer a request to remember a [[query]], or update
+// entries.
 export type prompt = enum uint {
 	DISCLOSE,
 	DELETE,
 	PERSIST,
+	UPDATE
 };
 
 // Attempt to unlock the keyring: prompt the user for a password and send it to
@@ -33,7 +38,7 @@ export type unlock = void;
 export type version = void;
 
 // A tagged union of all possible prompter commands.
-export type command = (key | query | password
+export type command = (key | query | update | password
 	| remember | prompt | unlock | version);
 
 // Frees resources associated with a [[command]].

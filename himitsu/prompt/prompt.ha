@@ -9,7 +9,7 @@ use strconv;
 use strings;
 
 // Prompter protocol version supported by this module.
-export def VERSION: (uint, uint, uint) = (0, 0, 1);
+export def VERSION: (uint, uint, uint) = (0, 0, 2);
 
 export type prompter = struct {
 	in: io::handle,
@@ -69,6 +69,8 @@ export fn next(p: *prompter) (command | io::EOF | error) = {
 	case "key" =>
 		return query::parse_str(args)?: key;
 	case "query" =>
+		return query::parse_str(args)?: update;
+	case "update" =>
 		return query::parse_str(args)?: query;
 	case "password" =>
 		return (args == "correct"): password;
@@ -99,6 +101,8 @@ export fn next(p: *prompter) (command | io::EOF | error) = {
 			return prompt::DELETE: command;
 		case "persist" =>
 			return prompt::PERSIST: command;
+		case "update" =>
+			return prompt::UPDATE: command;
 		case =>
 			return errors::invalid;
 		};

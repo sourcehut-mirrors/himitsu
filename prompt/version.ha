@@ -6,6 +6,7 @@ use strconv;
 export type version = enum u32 {
 	INIT = 0 << 16 | 0 << 8 | 0,
 	REMEMBER = 0 << 16 | 0 << 8 | 1,
+	UPDATE = 0 << 16 | 0 << 8 | 2,
 };
 
 fn parse_version(version: str) (u32 | protoerror) = {

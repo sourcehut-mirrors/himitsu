@@ -25,6 +25,7 @@ export type mode = enum {
 	DISCLOSE,
 	DELETE,
 	PERSIST,
+	UPDATE,
 };
 
 // Starts a new prompter session.
@@ -154,6 +155,19 @@ export fn send_query(
 	query::unparse(prompt.stdin, query)?;
 };
 
+// Sends an update request to the prompter
+export fn send_update(
+	prompt: *prompter,
+	query: *query::query,
+) (void | error) = {
+	if (prompt.version < version::UPDATE) {
+		return;
+	};
+
+	fmt::fprintf(prompt.stdin, "update ")?;
+	query::unparse(prompt.stdin, query)?;
+};
+
 // Sends an unlock request to the prompter.
 export fn unlock(prompt: *prompter) (void | error) = {
 	fmt::fprintln(prompt.stdin, "unlock")?;
@@ -168,6 +182,14 @@ export fn prompt(prompt: *prompter, mode: mode) (void | io::error) = {
 		yield "delete";
 	case mode::PERSIST =>
 		yield "persist";
+	case mode::UPDATE =>
+		yield if (prompt.version < version::UPDATE) {
+			// prompt deletion for old prompters, since it's a
+			// destructive operation.
+			yield "delete";
+		} else {
+			yield "update";
+		};
 	})?;
 };
 

@@ -3,6 +3,7 @@ use himitsu::remember;
 use prompt;
 use secstore;
 
+
 type prompter = struct {
 	serv: *server,
 	prompter: (prompt::prompter | void),
@@ -49,6 +50,11 @@ fn prompter_send_keys(p: *prompter, entries: []*secstore::entry) (void | prompt:
 fn prompter_send_query(p: *prompter, q: *query::query) (void | prompt::error) = {
 	let prompter = prompter_get(p)?;
 	prompt::send_query(&prompter, q)?;
+};
+
+fn prompter_send_update(p: *prompter, q: *query::query) (void | prompt::error) = {
+	let prompter = prompter_get(p)?;
+	prompt::send_update(&prompter, q)?;
 };
 
 fn prompter_send_remember(
