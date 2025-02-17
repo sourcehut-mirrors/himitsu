@@ -46,7 +46,7 @@ fn add_remember(
 		query = query,
 		strict = strict,
 		kind = kind,
-		timestamp = time::unix(now),
+		timestamp = now.sec,
 	})?;
 };
 
@@ -81,7 +81,7 @@ fn find_remember(
 			if (option is remember::session) {
 				continue;
 			};
-			let now = time::unix(time::now(time::clock::MONOTONIC));
+			let now = time::now(time::clock::MONOTONIC).sec;
 			assert(now > 0);
 			let passed = now - r.timestamp;
 			if (passed >= t) {
