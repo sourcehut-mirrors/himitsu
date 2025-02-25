@@ -26,6 +26,21 @@ are not understood by any particular application will be disregarded.
 *himitsud*(1)-related options are placed into the [himitsud] section. The
 available options are:
 
+*notify-reuse*
+	An optional shell command to run when a client uses a "remembered"
+	consent. The "query" shell variable is set to the query which was used.
+	For example, to show a dbus notification with *notify-send*(1) whenever
+	a remembered query is used:
+
+	```
+	[himitsud]
+	notify-reuse=notify-send "Himitsu key access" "$query"
+	```
+
+	The notify-reuse command is expanded with *wordexp*(3) before being
+	executed, and both the expansion and the notify command are run with the
+	same credentials as *himitsud*(1).
+
 *prompter*
 	Configure the path to the prompter executable which will be used to
 	interact with the user for consent requests and key store unlock

@@ -1,5 +1,5 @@
-use memio;
 use errors;
+use config;
 use fmt;
 use fs;
 use getopt;
@@ -7,6 +7,7 @@ use himitsu::query;
 use himitsu::remember;
 use io;
 use log;
+use memio;
 use os::exec;
 use prompt;
 use secstore;
@@ -220,8 +221,11 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	let entry_refused = false;
 	defer free(unrem);
 
-	if (decrypt && !is_remembered(client, &q)) {
+	const remembered = is_remembered(client, &q);
+	if (decrypt && !remembered) {
 		unrem = filter_unremembered(client, matches, &entry_refused)?;
+	} else if (decrypt && remembered) {
+		config::notify_reuse(serv.conf, &q);
 	};
 
 	if (len(matches) > 0 && decrypt && len(unrem) > 0) {

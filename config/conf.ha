@@ -11,6 +11,7 @@ use strings;
 // The himitsu configuration.
 export type config = struct {
 	prompter: []str,
+	notify_reuse: str,
 };
 
 // All possible errors returned by this module.
@@ -67,6 +68,8 @@ fn conf_himitsud(conf: *config, entry: *ini::entry) void = {
 		case let items: []str =>
 			conf.prompter = items;
 		};
+	case "notify-reuse" =>
+		conf.notify_reuse = strings::dup(entry.2)!;
 	case =>
 		yield;
 	};
