@@ -20,16 +20,20 @@ let sigwrite: io::file = -1;
 
 export fn main() void = {
 	const cmd = getopt::parse(os::args,
+		('C', "path", "config file to use"),
 		// TODO: Add note warning against using this to himitsu man page
 		('D', "daemonize (fork) after startup"),
 		('R', "fd", "notify readiness on file descriptor"),
 	);
 	defer getopt::finish(&cmd);
 
+	let configpath = "";
 	let daemonize = false;
 	let ready_fd: (void|io::file) = void;
 	for (let opt &.. cmd.opts) {
 		switch (opt.0) {
+		case 'C' =>
+			configpath = opt.1;
 		case 'D' =>
 			daemonize = true;
 		case 'R' =>
@@ -58,7 +62,7 @@ export fn main() void = {
 	signal::handle(signal::sig::INT, &handle);
 	signal::handle(signal::sig::TERM, &handle);
 
-	const conf = match (config::load()) {
+	const conf = match (config::load(configpath)) {
 	case let conf: config::config =>
 		yield conf;
 	case let err: config::error =>

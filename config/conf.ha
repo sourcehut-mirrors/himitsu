@@ -31,9 +31,13 @@ export fn strerror(err: error) const str = {
 
 // Loads the Himitsu configuration file. Pass the return value to [[finish]] to
 // free associated resources.
-export fn load() (config | error) = {
+export fn load(configpath: str = "") (config | error) = {
 	let buf = path::init()!;
-	path::set(&buf, dirs::config("himitsu"), "config.ini")!;
+	if (configpath == "") {
+		path::set(&buf, dirs::config("himitsu"), "config.ini")!;
+	} else {
+		path::set(&buf, configpath)!;
+	};
 
 	const file = os::open(path::string(&buf))?;
 	defer io::close(file)!;

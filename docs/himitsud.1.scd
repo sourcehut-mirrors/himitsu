@@ -24,8 +24,12 @@ For a general introduction to Himitsu, see *himitsu*(7).
 
 The following options are recognized by *himitsud*:
 
+*-C* <_path_>
+	Path to configuration file to use (see *himitsu.ini*(5)).
+
 *-D*
 	Daemonize (fork) the himitsud process after startup.
+
 *-R fd*
 	Notify readiness by writing *READY=1\n* into *fd* and then closing.
 
