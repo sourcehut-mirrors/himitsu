@@ -34,7 +34,6 @@ export fn newprompter(command: str, args: []str) (prompter | error) = {
 	const stdout = exec::pipe();
 	exec::addfile(&cmd, os::stdin_file, stdin.0);
 	exec::addfile(&cmd, os::stdout_file, stdout.1);
-	exec::addfile(&cmd, os::stderr_file, exec::nullfd);
 
 	const proc = exec::start(&cmd)?;
 	io::close(stdin.0)?;
