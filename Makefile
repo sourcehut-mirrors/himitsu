@@ -64,6 +64,7 @@ install: $(CMDS) $(DOCS)
 	install -m644 himitsu/client/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	install -m644 himitsu/query/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
 	install -m644 himitsu/remember/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/remember
+	install -m644 himitsu/prompt/* $(DESTDIR)$(THIRDPARTYDIR)/himitsu/prompt
 	install -m644 himitsud.1 $(DESTDIR)$(MANDIR)/man1/himitsud.1
 	install -m644 himitsu-store.1 $(DESTDIR)$(MANDIR)/man1/himitsu-store.1
 	install -m644 hiq.1 $(DESTDIR)$(MANDIR)/man1/hiq.1

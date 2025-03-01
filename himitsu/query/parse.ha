@@ -24,6 +24,9 @@ export type query = struct {
 	items: []pair,
 };
 
+// An empty [[query]].
+export def EMPTY = query { ... };
+
 // A key/value pair in a Himitsu key.
 export type pair = struct {
 	key: str,
