@@ -56,6 +56,7 @@ install: $(CMDS) $(DOCS)
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/client
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/query
 	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/remember
+	mkdir -p $(DESTDIR)$(THIRDPARTYDIR)/himitsu/prompt
 	mkdir -p $(DESTDIR)$(MANDIR)/man1
 	mkdir -p $(DESTDIR)$(MANDIR)/man5
 	mkdir -p $(DESTDIR)$(MANDIR)/man7
