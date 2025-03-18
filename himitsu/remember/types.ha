@@ -31,7 +31,7 @@ export fn stroption(o: option) str = {
 	case refuse =>
 		return "refuse";
 	case let t: timeout =>
-		return fmt::bsprintf(buf, "timeout {}", t: i64);
+		return fmt::bsprintf(buf, "timeout {}", t: i64)!;
 	};
 };
 
