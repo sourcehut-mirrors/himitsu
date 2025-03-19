@@ -1,3 +1,4 @@
+use ascii;
 use bytes;
 use memio;
 use encoding::utf8;
@@ -8,16 +9,6 @@ use sort::cmp;
 use sort::{sort};
 use strings;
 use fmt;
-
-let keyre: regex::regex = regex::regex { ... };
-
-@init fn init() void = {
-	keyre = regex::compile(`^[-_A-Za-z]+$`)!;
-};
-
-@fini fn fini() void = {
-	regex::finish(&keyre);
-};
 
 // A parsed Himitsu query.
 export type query = struct {
@@ -83,6 +74,27 @@ export fn parse_str(in: str) (query | error | nomem) = {
 	return parse_items(items);
 };
 
+fn validate_key(key: str) bool = {
+	if (len(key) == 0) {
+		return false;
+	};
+
+	let it = strings::iter(key);
+	for (let c => strings::next(&it)) {
+		if (!ascii::isprint(c)) {
+			return false;
+		};
+
+		switch (c) {
+		case '!', '?', '=' =>
+			return false;
+		case => void;
+		};
+	};
+
+	return true;
+};
+
 // Parses a list of key/value pairs which has already been split with shlex (or
 // a shell, for example when parsing a query from argv).
 export fn parse_items(items: []str) (query | error | nomem) = {
@@ -111,7 +123,7 @@ export fn parse_items(items: []str) (query | error | nomem) = {
 			pair.optional = true;
 		};
 		key = strings::trim(key, '?', '!');
-		if (!regex::test(&keyre, key)) {
+		if (!validate_key(key)) {
 			return invalid;
 		};
 
@@ -235,6 +247,14 @@ export fn finish(q: *query) void = {
 			("foo", "", false, true),
 			("bar", "baz", true, false),
 		]),
+		(`"foo bar~"=baz bar=baz`, [
+			("foo bar~", "baz", false, false),
+			("bar", "baz", false, false),
+		]),
+		(`#=bar /\\c.d$=d`, [
+			("#", "bar", false, false),
+			("/\\c.d$", "d", false, false),
+		]),
 	];
 
 	for (let i = 0z; i < len(cases); i += 1) {
@@ -247,8 +267,8 @@ export fn finish(q: *query) void = {
 
 		assert(len(expected) == len(result.items));
 		for (let j = 0z; j < len(result.items); j += 1) {
-			const got = result.items[i];
-			const expect = &expected[i];
+			const got = result.items[j];
+			const expect = &expected[j];
 			assert(got.key == expect.0);
 			assert(got.value == expect.1);
 			assert(got.private == expect.2);
@@ -257,13 +277,25 @@ export fn finish(q: *query) void = {
 	};
 
 	const errcases = [
-		`foo=bar foo=bar`,
-		`foo=bar foo=baz`,
-		`foo=bar foo!=baz`,
-		`foo=bar bar=bay foo=baz`,
+		(`foo=bar foo=bar`, dupkeys: error),
+		(`foo=bar foo=baz`, dupkeys: error),
+		(`foo=bar foo!=baz`, dupkeys: error),
+		(`foo=bar bar=bay foo=baz`, dupkeys: error),
+		("foo\0bar=baz", invalid: error),
+		("foo!bar=baz", invalid: error),
+		("foo?bar=baz", invalid: error),
+		("foo\bar=baz", invalid: error),
+		("\"foo\tbar\"=baz", invalid: error),
+		("\"foo\nbar\"=baz", invalid: error),
 	];
 	for (let err .. errcases) {
-		const input = memio::fixed(strings::toutf8(err));
-		assert(parse(&input) is dupkeys);
+		const input = memio::fixed(strings::toutf8(err.0));
+		const result = parse(&input);
+		match (err.1) {
+		case dupkeys =>
+			assert(result is dupkeys);
+		case invalid =>
+			assert(result is invalid);
+		};
 	};
 };
