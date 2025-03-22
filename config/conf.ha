@@ -31,7 +31,7 @@ export fn strerror(err: error) const str = {
 
 // Loads the Himitsu configuration file. Pass the return value to [[finish]] to
 // free associated resources.
-export fn load(configpath: str = "") (config | error) = {
+export fn load(configpath: str = "") (config | error | nomem) = {
 	let buf = path::init()!;
 	if (configpath == "") {
 		path::set(&buf, dirs::config("himitsu"), "config.ini")!;
@@ -46,12 +46,22 @@ export fn load(configpath: str = "") (config | error) = {
 
 	const scanner = ini::scan(file);
 	defer ini::finish(&scanner);
-	for (let entry => ini::next(&scanner)?) {
-		switch (entry.0) {
-		case "himitsud" =>
-			conf_himitsud(&conf, &entry);
-		case =>
-			yield;
+	for (let entry => ini::next(&scanner)) {
+		// XXX: Error type (!format::ini::error | !nomem) is not
+		// assignable to function result type (!config::error | !nomem |
+		// config::config)
+		match (entry) {
+		case let entry: ini::entry =>
+			switch (entry.0) {
+			case "himitsud" =>
+				conf_himitsud(&conf, &entry);
+			case =>
+				yield;
+			};
+		case nomem =>
+			return nomem;
+		case let e: ini::error =>
+			return e;
 		};
 	};
 

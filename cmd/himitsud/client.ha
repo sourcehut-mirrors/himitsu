@@ -2,6 +2,7 @@ use fmt;
 use himitsu::query;
 use himitsu::remember;
 use io;
+use log;
 use strings;
 use unix::poll;
 use unix::poll::{event};
@@ -59,7 +60,14 @@ fn disconnect_error(
 	args: fmt::field...
 ) void = {
 	free(client.wbuf);
-	const msg = fmt::asprintf(fmt, args...);
+	const msg = match (fmt::asprintf(fmt, args...)) {
+	case let s: str =>
+		yield s;
+	case nomem =>
+		log::println("nomem on disconnect_error. "
+			"silently dropping the client.");
+		yield "";
+	};
 	client.wbuf = strings::toutf8(msg);
 	client.state = state::WRITE_ERROR;
 	client.pollfd.events = event::POLLOUT | event::POLLHUP;
@@ -85,7 +93,7 @@ fn writefmt(
 	fmt: str,
 	args: fmt::field...
 ) (void | nomem) = {
-	let buf = fmt::asprintf(fmt, args...);
+	let buf = fmt::asprintf(fmt, args...)?;
 	let buf = strings::toutf8(buf);
 	append(buf, '\n')?;
 	write(client, buf);

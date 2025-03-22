@@ -126,7 +126,7 @@ export fn parse_items(items: []str) (query | error | nomem) = {
 	};
 
 	// check dupes
-	sort(keys, size(str), &cmp::strs);
+	sort(keys, size(str), &cmp::strs)?;
 	let prev = keys[0];
 	for (let i = 1z; i < len(keys); i += 1) {
 		if (prev == keys[i]) {
