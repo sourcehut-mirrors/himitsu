@@ -67,6 +67,25 @@ The following commands are recognized by the server:
 	  matched by given query will be remembered for the current connection.
 	- *-s*: will enable the strict query mode.
 
+*update* [-s] _query_...
+	Begins an transaction that will update all keys matching the provided
+	query. The server will answer wit the *update* reply. Requires a
+	*set* command next, to complete the update. There must be no other
+	command in between *update* and *set*.
+
+	- *-s*: will enable the strict query mode.
+
+*set* _query_...
+	Set must directly follow the *update* command. It changes the key/value
+	pairs of the keys that are matched by the update command according to
+	the values provided by the query. If a key/value pair doesn't exist, it
+	will be added. Otherwise the existing key will be updated with the new
+	value. If there is a key without a value, then the matching key/value
+	pair will be removed.
+
+	Updated keys are returned via a series of *key* replies, terminated with
+	and *end* reply to signal the end of the list.
+
 *status*
 	Requests the secret store lock status. Responds with the *status* reply.
 
@@ -100,6 +119,9 @@ The following replies are sent to the client:
 
 *status* unlocked|soft_locked|hard_locked
 	Current key store status as reply to the *status* command.
+
+*update*
+	Update command has been received without errors.
 
 *error* _message_...
 	Indicates that a requested operation resulted in an error. The _message_
