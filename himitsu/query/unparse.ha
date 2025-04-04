@@ -11,7 +11,7 @@ export fn unparse(sink: io::handle, q: *query) (size | io::error) = {
 	for (let i = 0z; i < len(q.items); i += 1) {
 		const pair = &q.items[i];
 
-		z += fmt::fprintf(sink, "{}", pair.key)?;
+		z += shlex::quote(sink, pair.key)?;
 
 		if (pair.private) {
 			z += fmt::fprintf(sink, "!")?;
