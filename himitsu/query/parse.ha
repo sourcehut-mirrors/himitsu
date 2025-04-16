@@ -13,6 +13,7 @@ use fmt;
 // A parsed Himitsu query.
 export type query = struct {
 	items: []pair,
+	strict: bool,
 };
 
 // An empty [[query]].
@@ -183,18 +184,37 @@ export fn dup_pub(q: *query) (query | nomem) = {
 	let ok = false;
 	defer if (!ok) finish(&query);
 	for (let p .. q.items) {
-		let pairok = false;
-		p.value = if (p.private) "" else strings::dup(p.value)?;
-		defer if (!pairok) free(p.value);
-
-		p.key = strings::dup(p.key)?;
-		defer if (!pairok) free(p.key);
-
-		append(query.items, p)?;
-		pairok = true;
+		let dup = dup_pair(&p)?;
+		match (append(query.items, dup)) {
+		case void => void;
+		case nomem =>
+			finish_pair(&dup);
+			return nomem;
+		};
 	};
 	ok = true;
 	return query;
+};
+
+export fn dup_pair(p: *pair) (pair | nomem) = {
+	let dup = pair {
+		key = "",
+		value = "",
+		private = p.private,
+		optional = p.optional,
+	};
+	let ok = false;
+	defer if (!ok) finish_pair(p);
+	dup.key = strings::dup(p.key)?;
+	dup.value = strings::dup(p.value)?;
+	ok = true;
+	return dup;
+};
+
+export fn finish_pair(p: *pair) void = {
+	free(p.key);
+	bytes::zero(strings::toutf8(p.value));
+	free(p.value);
 };
 
 // Checks whether 'sub' is a sub-query of 'q'. It returns true if all

@@ -374,7 +374,7 @@ export fn add(
 		return dupentry;
 	};
 
-	let e = entry { pairs = [] };
+	let e = entry { store = store, pairs = [] };
 	let ok = false;
 	if (!ok) entry_finish(&e);
 
@@ -486,7 +486,7 @@ fn load_index(
 		};
 		defer query::finish(&q);
 
-		let e = entry { pairs = [] };
+		let e = entry { store = store, pairs = [] };
 		let ok = false;
 		defer if (!ok) entry_finish(&e);
 

@@ -3,6 +3,7 @@ use config;
 use fmt;
 use fs;
 use getopt;
+use himitsu::client;
 use himitsu::query;
 use himitsu::remember;
 use io;
@@ -65,6 +66,10 @@ fn exec(serv: *server, client: *client, cmd: str) (void | servererror) = {
 		yield &exec_lock;
 	case "status" =>
 		yield &exec_status;
+	case "update" =>
+		yield &exec_update;
+	case "set" =>
+		yield &exec_set;
 	case "quit" =>
 		yield &exec_quit;
 	case =>
@@ -271,6 +276,135 @@ fn exec_query(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	fmt::fprintln(&buf, "end")?;
 
 	writebuf(client, memio::buffer(&buf))?;
+};
+
+fn exec_update(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	const cmd = getopt::tryparse(args,
+		"start the update process",
+		('s', "strict match"),
+		"query..."
+	)?;
+	defer getopt::finish(&cmd);
+
+	let q = query::parse_items(cmd.args)?;
+
+	for (let i = 0z; i < len(cmd.opts); i += 1) {
+		const opt = cmd.opts[i];
+		switch (opt.0) {
+		case 's' =>
+			q.strict = true;
+		case => abort();
+		};
+	};
+
+	client.qupdate = q;
+	writefmt(client, "update")?;
+};
+
+fn exec_set(serv: *server, client: *client, args: []str) (void | cmderror) = {
+	defer client.qupdate = void;
+	const cmd = getopt::tryparse(args,
+		"set values to entries queried by the update command"
+		"query..."
+	)?;
+	defer getopt::finish(&cmd);
+
+	let changes = query::parse_items(cmd.args)?;
+	defer query::finish(&changes);
+
+	let prompter = new_prompter(serv);
+	defer prompter_close(&prompter);
+
+	if (!prompter_unlock(&prompter)?) {
+		writefmt(client, "error Failed to unlock")?;
+		return;
+	};
+
+	let qupdate = match (client.qupdate) {
+	case void =>
+		writefmt(client, "error Update command required before calling set.")?;
+		return;
+	case let q: query::query =>
+		yield q;
+	};
+
+	let updated: []query::query = [];
+	defer {
+		for (let q &.. updated) query::finish(q);
+		free(updated);
+	};
+
+	prompter_send_update(&prompter, &qupdate)?;
+
+	const iter = secstore::query(serv.store, &qupdate, qupdate.strict);
+	for (let m => secstore::next(serv.store, &iter)) {
+		prompter_send_keys(&prompter, [m])?;
+
+		let q = secstore::entry_to_query(m, true)?;
+
+		let qok = false;
+		defer if (!qok) query::finish(&q);
+
+		for (let c .. changes.items) {
+			let add = c.value != "";
+			for (let i = 0z; i < len(q.items); i += 1) {
+				if (q.items[i].key != c.key) {
+					continue;
+				};
+
+				if (add) {
+					let v = strings::dup(c.value)?;
+					q.items[i].value = v;
+					add = false;
+				} else {
+					delete(q.items[i]);
+				};
+				break;
+			};
+
+			if (add) {
+				let dp = query::dup_pair(&c)?;
+				if (append(q.items, dp) is nomem) {
+					query::finish_pair(&dp);
+					return nomem;
+				};
+			};
+		};
+
+		append(updated, q)?;
+		qok = true;
+	};
+
+	prompter_prompt(&prompter, prompt::mode::UPDATE)?;
+	if (!prompter_wait(&prompter)?) {
+		writefmt(client, "error User declined")?;
+		return;
+	};
+
+	secstore::del(serv.store, &qupdate, qupdate.strict)!;
+
+	let buf = memio::dynamic();
+	for (let u .. updated) {
+		let entry = match (secstore::add(serv.store, &u)) {
+		case let e: *secstore::entry =>
+			yield e;
+		case secstore::dupentry =>
+			// changing values can result in duplicates.
+			// TODO should the user be notified about this?
+			continue;
+		case let e: secstore::error =>
+			// if this fails, data has been lost. To fix this
+			// properly, we have to rethink how we store entries
+			// and/or introduce some kind of transaction system.
+			return e;
+		};
+
+		fmt::fprint(&buf, "key ")?;
+		secstore::write(serv.store, &buf, entry, false)?;
+		fmt::fprintln(&buf)?;
+	};
+	fmt::fprintln(&buf, "end")?;
+	write(client, memio::buffer(&buf));
 };
 
 fn exec_status(serv: *server, client: *client, args: []str) (void | cmderror) = {

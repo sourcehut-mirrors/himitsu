@@ -28,6 +28,7 @@ export type secstore = struct {
 };
 
 export type entry = struct {
+	store: *secstore,
 	pairs: []pair,
 };
 

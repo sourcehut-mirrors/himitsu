@@ -19,6 +19,7 @@ export type operation = enum uint {
 	QUERY,
 	ADD,
 	DEL,
+	UPDATE,
 	QUIT,
 };
 
@@ -123,6 +124,8 @@ export fn query(
 		fmt::fprint(&buf, "add ")?;
 	case operation::DEL =>
 		fmt::fprint(&buf, "del ")?;
+	case operation::UPDATE =>
+		abort("use the update function");
 	case operation::QUIT =>
 		fmt::fprint(&buf, "quit ")?;
 	};
@@ -138,6 +141,65 @@ export fn query(
 	write_remopts(&buf, opts)?;
 
 	query::unparse(&buf, q)?;
+
+	io::writeall(conn, memio::buffer(&buf))?;
+
+	return keyiter {
+		conn = conn,
+		buf = memio::dynamic(),
+	};
+};
+
+// Executes an update operation. All keys matched by 'q' will be changed
+// according to `updates`. Only pairs in `updates` will be considered. If a pair
+// doesn't have a value, it will be deleted. Otherwise the value will be
+// changed.
+// Returns an iterator that iterates through each changed key returned. The user
+// must call [[next]] to retrieve the next key until all keys are returned, or
+// risk a memory leak.
+export fn update(
+	conn: net::socket,
+	q: *query::query,
+	updates: *query::query,
+	flags: flags,
+) (keyiter | error) = {
+	const buf = memio::dynamic();
+	defer io::close(&buf)!;
+
+	fmt::fprint(&buf, "update ")?;
+	if (flags & flags::STRICT != 0) {
+		fmt::fprint(&buf, "-s ")?;
+	};
+	query::unparse(&buf, q)?;
+
+	io::writeall(conn, memio::buffer(&buf))?;
+
+	let lbuf = match (bufio::read_line(conn)?) {
+	case let lbuf: []u8 =>
+		yield lbuf;
+	case io::EOF =>
+		return "Internal error": hierror;
+	};
+	defer free(lbuf);
+
+	const line = match (strings::fromutf8(lbuf)) {
+	case let s: str =>
+		yield s;
+	case utf8::invalid =>
+		return errors::invalid: io::error;
+	};
+
+	if (strings::hasprefix(line, "error ")) {
+		// TODO: leaks
+		return strings::dup(strings::sub(line, 6)): hierror: error;
+	};
+	if (line != "update") {
+		return "Internal error": hierror;
+	};
+
+	memio::reset(&buf);
+	fmt::fprint(&buf, "set ")?;
+	query::unparse(&buf, updates)?;
 
 	io::writeall(conn, memio::buffer(&buf))?;
 

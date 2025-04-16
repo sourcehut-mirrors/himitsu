@@ -2,6 +2,7 @@ use himitsu::query;
 use himitsu::remember;
 use prompt;
 use secstore;
+use strings;
 
 
 type prompter = struct {
@@ -52,9 +53,19 @@ fn prompter_send_query(p: *prompter, q: *query::query) (void | prompt::error) = 
 	prompt::send_query(&prompter, q)?;
 };
 
-fn prompter_send_update(p: *prompter, q: *query::query) (void | prompt::error) = {
+fn prompter_send_update(p: *prompter, q: *query::query) (void | prompt::error | nomem) = {
 	let prompter = prompter_get(p)?;
-	prompt::send_update(&prompter, q)?;
+
+	let dup = query::dup(q)?;
+	defer query::finish(&dup);
+
+	for (let e &.. dup.items) {
+		if (e.private && e.value != "") {
+			e.value = strings::dup("changed")?;
+		};
+	};
+
+	prompt::send_update(&prompter, &dup)?;
 };
 
 fn prompter_send_remember(

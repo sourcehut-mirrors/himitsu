@@ -1,4 +1,6 @@
 use himitsu::query;
+use io;
+use memio;
 use strings;
 use uuid;
 
@@ -11,7 +13,7 @@ export type iterator = struct {
 // Performs a query against the secstore, returning an iterator that can be
 // passed to [[next]] to retrieve matching entries. The query is borrowed for
 // the lifetime of the iterator.
-// 
+//
 // The iterator is not valid if the store is mutated during the iteration.
 export fn query(
 	store: *secstore,
@@ -80,7 +82,10 @@ fn findpair(ent: *entry, key: str) (*pair | void) = {
 
 // Converts an entry to it's matching query. The caller must finish the query
 // with [[himitsu::query::finish]].
-export fn entry_to_query(ent: *entry) (query::query | nomem) = {
+export fn entry_to_query(
+	ent: *entry,
+	decrypt: bool = false,
+) (query::query | nomem) = {
 	let q = query::query {
 		...
 	};
@@ -98,8 +103,18 @@ export fn entry_to_query(ent: *entry) (query::query | nomem) = {
 		match (p.value) {
 		case let v: str =>
 			i.value = strings::dup(v)?;
-		case uuid::uuid =>
-			i.private =true;
+		case let u: uuid::uuid =>
+			i.private = true;
+			if (decrypt) {
+				let buf = memio::dynamic();
+				match (write_private(ent.store, &buf, u)) {
+				case void =>
+					i.value = memio::string(&buf)!;
+				case let e: error =>
+					io::close(&buf)!;
+					return nomem;
+				};
+			};
 		};
 	};
 	ok = true;

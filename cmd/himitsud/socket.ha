@@ -5,6 +5,7 @@ use encoding::utf8;
 use errors;
 use fmt;
 use fs;
+use himitsu::query;
 use io;
 use log;
 use net::unix;
@@ -172,6 +173,7 @@ fn accept(serv: *server) void = {
 			server = serv,
 			sock = sock,
 			pollfd = pollfd,
+			qupdate = void,
 			...
 		})) {
 	case void => void;

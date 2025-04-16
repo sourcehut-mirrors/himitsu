@@ -28,6 +28,7 @@ type client = struct {
 	rbuf: []u8,
 	wbuf: []u8,
 	remembers: []remember,
+	qupdate: (void | query::query),
 };
 
 // Immediately disconnects a client, without sending them an error message.
@@ -40,6 +41,11 @@ fn disconnect(c: *client) void = {
 		query::finish(&r.query);
 	};
 	free(c.remembers);
+	match (c.qupdate) {
+	case void => void;
+	case let q: query::query =>
+		query::finish(&q);
+	};
 
 	let serv = c.server;
 	let i = (c: uintptr - serv.clients: *[*]client: uintptr): size / size(client);
