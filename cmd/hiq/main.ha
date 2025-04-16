@@ -30,6 +30,7 @@ export fn main() void = {
 		('c', "key/value pair", "change the value of a pair. "
 			"Can be used multiple times."),
 		('d', "decrypt private keys"),
+		('e', "edit entries matched by the query by providing changes via stdin"),
 		('F', "field", "select a field for output"),
 		('l', "soft lock the keyring"),
 		('L', "hard lock the keyring"),
@@ -47,6 +48,7 @@ export fn main() void = {
 	let one = false;
 	let lock = lockop::NONE;
 	let changes: []str = [];
+	let edit = false;
 
 	for (let opt .. cmd.opts) {
 		switch (opt.0) {
@@ -59,6 +61,9 @@ export fn main() void = {
 			append(changes, opt.1)!;
 		case 'd' =>
 			flags |= client::flags::DECRYPT;
+		case 'e' =>
+			op = client::operation::UPDATE;
+			edit = true;
 		case 'F' =>
 			field = opt.1;
 		case 'l' =>
@@ -103,35 +108,62 @@ export fn main() void = {
 		};
 	};
 
+	if (op == client::operation::UPDATE) {
+		if (edit && len(changes) > 0) {
+			fmt::fatal("Error options -e or -c can not be provided at the same time");
+		};
+
+		const query = match (query::parse_items(cmd.args)) {
+		case let q: query::query =>
+			yield q;
+		case let err: query::error =>
+			fmt::fatal(query::strerror(err));
+		};
+		defer query::finish(&query);
+
+		if (!edit) {
+			const changes = match (query::parse_items(changes)) {
+			case let q: query::query =>
+				yield q;
+			case let err: query::error =>
+				fmt::fatal("error parsing changes", query::strerror(err));
+			};
+			defer query::finish(&changes);
+
+			update(conn, &query, &changes, flags);
+			return;
+		};
+
+		if (tty::isatty(os::stderr_file) && tty::isatty(os::stdin_file)) {
+			fmt::errorln("Enter changes:")!;
+		};
+		let scan = bufio::newscanner(os::stdin);
+		defer bufio::finish(&scan);
+		const changes = match (scan_query(&scan)) {
+		case done =>
+			fmt::fatal("no changes provided");
+		case let q: query::query =>
+			yield q;
+		};
+		defer query::finish(&changes);
+
+		update(conn, &query, &changes, flags);
+		return;
+	};
+
+	if (len(changes) > 0) {
+		fmt::fatal("changes are not allowed for operations other than update");
+	};
+
 	if (op == client::operation::ADD && len(cmd.args) == 0) {
 		if (tty::isatty(os::stderr_file) && tty::isatty(os::stdin_file)) {
 			fmt::errorln("Enter new keys, one per line, then press ^d:")!;
 		};
 		let scan = bufio::newscanner(os::stdin);
 		defer bufio::finish(&scan);
-		for (let line => bufio::scan_line(&scan)) {
-			let line = match (line) {
-			case let line: const str =>
-				yield line;
-			case let e: io::error =>
-				fmt::fatal("Error reading query", io::strerror(e));
-			case utf8::invalid =>
-				fmt::fatal("Error: Query is not valid UTF-8");
-			};
-
-			const query = match (query::parse_str(line)) {
-			case let q: query::query =>
-				yield q;
-			case query::invalid =>
-				// duplicate line to avoid use after free
-				fmt::fatal("Invalid query:",
-					strings::dup(line)!);
-			case query::dupkeys =>
-				fmt::fatal("Duplicate keys in query:",
-					strings::dup(line)!);
-			};
+		for (let query => scan_query(&scan)) {
 			defer query::finish(&query);
-			send(conn, client::operation::ADD, &query, flags, field, one);
+			send(conn, op, &query, flags, field, one);
 		};
 	} else {
 		const query = match (query::parse_items(cmd.args)) {
@@ -142,6 +174,31 @@ export fn main() void = {
 		};
 		defer query::finish(&query);
 		send(conn, op, &query, flags, field, one);
+	};
+};
+
+fn scan_query(scan: *bufio::scanner) (query::query | done) = {
+	let line = match (bufio::scan_line(scan)) {
+	case let line: const str =>
+		yield line;
+	case io::EOF =>
+		return done;
+	case let e: io::error =>
+		fmt::fatal("Error reading query", io::strerror(e));
+	case utf8::invalid =>
+		fmt::fatal("Error: Query is not valid UTF-8");
+	};
+
+	match (query::parse_str(line)) {
+	case let q: query::query =>
+		return q;
+	case query::invalid =>
+		// duplicate line to avoid use after free
+		fmt::fatal("Invalid query:",
+			strings::dup(line)!);
+	case query::dupkeys =>
+		fmt::fatal("Duplicate keys in query:",
+			strings::dup(line)!);
 	};
 };
 
