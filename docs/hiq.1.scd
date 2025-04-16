@@ -6,7 +6,7 @@ hiq - query the *himitsu*(7) key store
 
 # SYNOPSIS
 
-*hiq* [-h1adlLQRs] [-F _field_] _query_...
+*hiq* [-h1adelLQRs] [-c _pair_] [-F _field_] _query_...
 
 # DESCRIPTION
 
@@ -36,8 +36,19 @@ have already been quoted properly.
 	interactive shell, to prevent secret values from being stored in your
 	shell history.
 
+*-c* _pair_
+	Change a key/value pair of all matched entries. If the key has no value
+	the pair will be removed from the entries. If it has a value it will
+	be added or changed if exists.
+
 *-d*
 	Request decryption of secret keys.
+
+*-e*
+	Edit all matched entries by providing changes via stdin. The changes
+	must be provided as a query, where all keys without values will be
+	removed from the entries and keys with values will change the values
+	or of the matching keys or will add them if they don't exist.
 
 *-F* _field_
 	Select a specific field to print. By default, the full key is printed in
