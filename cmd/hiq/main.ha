@@ -27,6 +27,8 @@ export fn main() void = {
 		"secure key store client",
 		('1', "only accept one match"),
 		('a', "add a key"),
+		('c', "key/value pair", "change the value of a pair. "
+			"Can be used multiple times."),
 		('d', "decrypt private keys"),
 		('F', "field", "select a field for output"),
 		('l', "soft lock the keyring"),
@@ -44,6 +46,7 @@ export fn main() void = {
 	let field: (str | void) = void;
 	let one = false;
 	let lock = lockop::NONE;
+	let changes: []str = [];
 
 	for (let opt .. cmd.opts) {
 		switch (opt.0) {
@@ -51,6 +54,9 @@ export fn main() void = {
 			one = true;
 		case 'a' =>
 			op = client::operation::ADD;
+		case 'c' =>
+			op = client::operation::UPDATE;
+			append(changes, opt.1)!;
 		case 'd' =>
 			flags |= client::flags::DECRYPT;
 		case 'F' =>
@@ -147,18 +153,20 @@ fn send(
 	field: (str | void),
 	one: bool,
 ) void = {
-	const keys = match (client::query(conn, op, query, flags)) {
+	match (client::query(conn, op, query, flags)) {
 	case let k: client::keyiter =>
-		yield k;
+		print_keys(&k, field, one);
 	case let err: client::error =>
 		fmt::fatal("Error executing query:", client::strerror(err));
 	};
+};
 
+fn print_keys(it: *client::keyiter, field: (str | void) = void, one: bool = false) void = {
 	let buf = memio::dynamic();
 	defer io::close(&buf)!;
 
 	for (let i = 0; true; i += 1) {
-		let key = match (client::next(&keys)) {
+		let key = match (client::next(it)) {
 		case let k: query::query =>
 			if (one && i > 0) {
 				fmt::fatal("Error: ambiguous match");
@@ -181,4 +189,18 @@ fn send(
 	};
 
 	fmt::print(memio::string(&buf)!)!;
+};
+
+fn update(
+	conn: net::socket,
+	query: *query::query,
+	changes: *query::query,
+	flags: client::flags,
+) void = {
+	match (client::update(conn, query, changes, flags)) {
+	case let it: client::keyiter =>
+		print_keys(&it);
+	case let err: client::error =>
+		fmt::fatal("Error executing update:", client::strerror(err));
+	};
 };
