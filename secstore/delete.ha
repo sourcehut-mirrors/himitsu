@@ -1,3 +1,6 @@
+use errors;
+use fmt;
+use fs;
 use himitsu::query;
 use io;
 use os;
@@ -52,6 +55,14 @@ fn delkeys(store: *secstore, entry: *entry) void = {
 		};
 
 		path::set(&buf, store.dir, uuid::encodestr(id))!;
-		os::remove(path::string(&buf))!;
+		match (os::remove(path::string(&buf))) {
+		case void => void;
+		case errors::noentry =>
+			fmt::fprintln(os::stderr,
+				"warning: tried to delete missing key file:",
+				path::string(&buf))!;
+		case let e: fs::error =>
+			fmt::fatal("Unexpected error deleting key file:", fs::strerror(e));
+		};
 	};
 };
