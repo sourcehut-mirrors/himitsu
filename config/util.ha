@@ -32,5 +32,6 @@ export fn notify_reuse(conf: *config, query: *query::query) void = {
 	case let err: exec::error =>
 		log::fatalf("notify-reuse error: {}", exec::strerror(err));
 	};
-	exec::exec(&cmd);
+	const err = exec::exec(&cmd);
+	log::fatalf("exec: {}", exec::strerror(err));
 };

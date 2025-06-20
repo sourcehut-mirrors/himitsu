@@ -52,7 +52,7 @@ fn compatquery_parse(
 			p.optional = true;
 		};
 		key = strings::trim(key, '?', '!');
-		if (!regex::test(&keyre, key)) {
+		if (!regex::test(&keyre, key)!) {
 			return query::invalid;
 		};
 		p.key = strings::dup(key)?;

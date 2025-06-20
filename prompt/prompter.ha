@@ -29,11 +29,17 @@ export type mode = enum {
 
 // Starts a new prompter session.
 export fn newprompter(command: str, args: []str) (prompter | error) = {
-	const cmd = exec::cmd(command, args...)?;
+	const cmd = match (exec::cmd(command, args...)) {
+	case let cmd: exec::command =>
+		yield cmd;
+	case let err: exec::error =>
+		return err;
+	case nomem => abort();
+	};
 	const stdin = exec::pipe();
 	const stdout = exec::pipe();
-	exec::addfile(&cmd, os::stdin_file, stdin.0);
-	exec::addfile(&cmd, os::stdout_file, stdout.1);
+	exec::addfile(&cmd, os::stdin_file, stdin.0)!;
+	exec::addfile(&cmd, os::stdout_file, stdout.1)!;
 
 	const proc = exec::start(&cmd)?;
 	io::close(stdin.0)?;
