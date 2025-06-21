@@ -151,6 +151,31 @@ export fn parse_items(items: []str) (query | error | nomem) = {
 	return query;
 };
 
+// Duplicates a query. The caller must pass the return value to [[finish]] after
+// use.
+export fn dup(q: *query) (query | nomem) = {
+	let query = query { ... };
+	let ok = false;
+	defer if (!ok) finish(&query);
+	for (let p .. q.items) {
+		let pairok = false;
+		p.value = strings::dup(p.value)?;
+		defer if (!pairok) {
+			bytes::zero(strings::toutf8(p.value));
+			free(p.value);
+		};
+
+		p.key = strings::dup(p.key)?;
+		defer if (!pairok) free(p.key);
+
+		append(query.items, p)?;
+		pairok = true;
+	};
+	ok = true;
+	return query;
+};
+
+
 // Duplicates a query, but only keeps values of public key/value pairs. The
 // caller must pass the return value to [[finish]] after use.
 export fn dup_pub(q: *query) (query | nomem) = {
