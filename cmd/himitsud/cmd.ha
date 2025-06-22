@@ -334,7 +334,7 @@ fn exec_set(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		free(updated);
 	};
 
-	prompter_send_update(&prompter, &qupdate)?;
+	prompter_send_update(&prompter, &changes)?;
 
 	const iter = secstore::query(serv.store, &qupdate, qupdate.strict);
 	for (let m => secstore::next(serv.store, &iter)) {
