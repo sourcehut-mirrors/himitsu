@@ -184,7 +184,6 @@ Scenario 1: the keyring is hard locked and the daemon wishes to unlock it.
 => version
 <= version 0.0.0
 => unlock
-=> prompt unlock
 <= password hunter3
 => password incorrect
 <= password hunter2
