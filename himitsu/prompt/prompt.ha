@@ -69,9 +69,9 @@ export fn next(p: *prompter) (command | io::EOF | error) = {
 	case "key" =>
 		return query::parse_str(args)?: key;
 	case "query" =>
-		return query::parse_str(args)?: update;
-	case "update" =>
 		return query::parse_str(args)?: query;
+	case "update" =>
+		return query::parse_str(args)?: update;
 	case "password" =>
 		return (args == "correct"): password;
 	case "remember" =>
