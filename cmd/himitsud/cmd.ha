@@ -341,38 +341,14 @@ fn exec_set(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		prompter_send_keys(&prompter, [m])?;
 
 		let q = secstore::entry_to_query(m, true)?;
+		defer query::finish(&q);
 
-		let qok = false;
-		defer if (!qok) query::finish(&q);
+		let up = query::change(&q, &changes)?;
 
-		for (let c .. changes.items) {
-			let add = c.value != "";
-			for (let i = 0z; i < len(q.items); i += 1) {
-				if (q.items[i].key != c.key) {
-					continue;
-				};
-
-				if (add) {
-					let v = strings::dup(c.value)?;
-					q.items[i].value = v;
-					add = false;
-				} else {
-					delete(q.items[i]);
-				};
-				break;
-			};
-
-			if (add) {
-				let dp = query::dup_pair(&c)?;
-				if (append(q.items, dp) is nomem) {
-					query::finish_pair(&dp);
-					return nomem;
-				};
-			};
+		if (append(updated, up) is nomem) {
+			query::finish(&up);
+			return nomem;
 		};
-
-		append(updated, q)?;
-		qok = true;
 	};
 
 	prompter_prompt(&prompter, prompt::mode::UPDATE)?;
