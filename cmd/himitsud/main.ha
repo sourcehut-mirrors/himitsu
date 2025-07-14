@@ -81,7 +81,7 @@ export fn main() void = {
 		match (exec::fork()) {
 		case let err: exec::error =>
 			fmt::fatal("exec failed:", exec::strerror(err));
-		case int =>
+		case exec::process =>
 			log::println("Continuing in child process");
 			os::exit(0);
 		case void =>
