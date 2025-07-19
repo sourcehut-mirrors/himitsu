@@ -2,6 +2,7 @@ use bufio;
 use dirs;
 use errors;
 use fmt;
+use fs;
 use himitsu::query;
 use himitsu::remember;
 use io;
@@ -73,8 +74,13 @@ export fn strerror(err: error) const str = {
 // Connects to the Himitsu socket, returning the connection's file descriptor.
 export fn connect() (net::socket | error) = {
 	let buf = path::init()!;
-	// TODO: Bubble up dirs::runtime errors
-	const sockpath = path::set(&buf, dirs::runtime()!, "himitsu")!;
+	const runtimedir = match (dirs::runtime()) {
+	case let r: str =>
+		yield r;
+	case fs::error =>
+		return "XDG_RUNTIME_DIR unset or incorrectly set up.": hierror;
+	};
+	const sockpath = path::set(&buf, runtimedir, "himitsu")!;
 	return unix::connect(sockpath)?;
 };
 
