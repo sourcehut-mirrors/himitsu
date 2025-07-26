@@ -185,6 +185,10 @@ export fn dup_pub(q: *query) (query | nomem) = {
 	defer if (!ok) finish(&query);
 	for (let p .. q.items) {
 		let dup = dup_pair(&p)?;
+		if (dup.private) {
+			free(dup.value);
+			dup.value = "";
+		};
 		match (append(query.items, dup)) {
 		case void => void;
 		case nomem =>
