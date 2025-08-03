@@ -21,7 +21,8 @@ $ make
 
 You also need a prompter. Try one of these:
 
-- [hiprompt-gtk-py](https://git.sr.ht/~sircmpwn/hiprompt-gtk-py)
+- [hiprompt-gtk](https://git.sr.ht/~sircmpwn/hiprompt-gtk) the reference
+  prompter maintained by the himitsu team.
 
 ## Usage
 
