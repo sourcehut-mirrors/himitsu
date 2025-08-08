@@ -259,6 +259,8 @@ export fn unlock(store: *secstore, passphrase: []u8) (void | error) = {
 	switch (items[0]) {
 	case "argon2i" =>
 		if (kv == keyversion::V0) {
+			fmt::errorln("WARNING: Deprecated key format in use. "
+				"Please upgrade your store with `himitsu-store -r`")!;
 			argon2bug::argon2i(key, passphrase, salt, &config)!;
 		} else {
 			argon2::argon2i(key, passphrase, salt, &config)!;
