@@ -447,6 +447,11 @@ fn exec_persist(serv: *server, client: *client, args: []str) (void | cmderror) =
 	let prompter = new_prompter(serv);
 	defer prompter_close(&prompter);
 
+	if (!prompter_unlock(&prompter)?) {
+		writefmt(client, "error Failed to unlock")?;
+		return;
+	};
+
 	const q = query::parse_items(cmd.args)?;
 	defer query::finish(&q);
 
