@@ -69,3 +69,25 @@ export fn change(q: *query, changes: *query) (query | nomem) = {
 	ok = true;
 	return new;
 };
+
+@test fn change() void = {
+	let q = parse_str("host=home rev=1 user=root key!=secr3t")!;
+	defer finish(&q);
+
+	let up = parse_str("key!=secr2t rev=2")!;
+	defer finish(&up);
+
+	let changes = change(&q, &up)!;
+	defer finish(&changes);
+
+	let result = unparsestr(&changes)!;
+	defer free(result);
+	assert(result == "host=home rev=2 user=root key!=secr2t\n");
+
+	let nochanges = change(&changes, &up)!;
+	defer finish(&nochanges);
+
+	let result = unparsestr(&nochanges)!;
+	defer free(result);
+	assert(result == "host=home rev=2 user=root key!=secr2t\n");
+};
