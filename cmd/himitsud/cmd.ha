@@ -360,6 +360,9 @@ fn exec_set(serv: *server, client: *client, args: []str) (void | cmderror) = {
 	secstore::del(serv.store, &qupdate, qupdate.strict)!;
 
 	let buf = memio::dynamic();
+	let ok = false;
+	defer if (!ok) io::close(&buf)!;
+
 	for (let u .. updated) {
 		let entry = match (secstore::add(serv.store, &u)) {
 		case let e: *secstore::entry =>
@@ -380,6 +383,7 @@ fn exec_set(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		fmt::fprintln(&buf)?;
 	};
 	fmt::fprintln(&buf, "end")?;
+	ok = true;
 	write(client, memio::buffer(&buf));
 };
 
