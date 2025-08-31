@@ -1,3 +1,4 @@
+use crypto;
 use strings;
 
 // Applies 'changes' to query 'q'. Returns a new query that keeps the order of
@@ -22,8 +23,13 @@ export fn change(q: *query, changes: *query) (query | nomem) = {
 				continue :outer;
 			};
 
-			if (p.value == cpair.value
-					&& p.private == cpair.private)  {
+			const equal = if (!p.private) {
+				yield p.value == cpair.value;
+			} else {
+				yield crypto::compare(strings::toutf8(p.value),
+					strings::toutf8(cpair.value));
+			};
+			if (equal && p.private == cpair.private)  {
 				continue;
 			};
 
