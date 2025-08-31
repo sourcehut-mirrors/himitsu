@@ -222,7 +222,7 @@ export fn finish_pair(p: *pair) void = {
 };
 
 // Checks whether 'sub' is a sub-query of 'q'. It returns true if all
-// pairs of 'sub' are part of 'q'.
+// pairs of 'sub' are part of 'q'. Does not compare private values.
 export fn is_sub(sub: *query, q: *query) bool = {
 	for :sub (let s &.. sub.items) {
 		for (let i &..q.items) {
@@ -252,26 +252,38 @@ export fn is_sub(sub: *query, q: *query) bool = {
 	assert(!is_sub(&s, &q));
 };
 
-// Checks whether 'a' is equal to 'b'.
-export fn is_equal(a: *query, b: *query) bool =
-	len(a.items) == len(b.items) && is_sub(a, b);
+// Returns whether the query 'q' matches 'candidate'. Private values are excluded
+// from comparison. A query matches, if all query pairs are part of the
+// 'candidate'. If 'strict' is true, the 'candidate' must have the same
+// number of pairs to be a match. Private values are not compared.
+export fn matches(q: *query, candidate: *query, strict: bool = false) bool = {
+	if (strict) {
+		return len(q.items) == len(candidate.items)
+			&& is_sub(q, candidate);
+	};
 
-@test fn is_equal() void = {
+	return is_sub(q, candidate);
+};
+
+@test fn matches() void = {
 	let q = parse_str("a=b x=y c? d!")!;
 	defer finish(&q);
-	assert(is_equal(&q, &q));
+	assert(matches(&q, &q));
+	assert(matches(&q, &q, true));
 
 	let s = parse_str("a=b x=y c? d!")!;
 	defer finish(&s);
-	assert(is_equal(&s, &q));
+	assert(matches(&s, &q));
+	assert(matches(&s, &q, true));
 
 	let s = parse_str("a=b x=z c? d!")!;
 	defer finish(&s);
-	assert(!is_equal(&s, &q));
+	assert(!matches(&s, &q));
 
 	let s = parse_str("a=b c? d!")!;
 	defer finish(&s);
-	assert(!is_equal(&s, &q));
+	assert(matches(&s, &q));
+	assert(!matches(&s, &q, true));
 };
 
 // Frees resources associated with this query.

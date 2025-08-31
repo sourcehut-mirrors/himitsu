@@ -66,8 +66,7 @@ fn find_remember(
 
 		match (q) {
 		case let q: *query::query =>
-			if ((r.strict && !query::is_equal(&r.query, q))
-					|| (!r.strict && !query::is_sub(&r.query, q))) {
+			if (!query::matches(&r.query, q, r.strict)) {
 				continue;
 			};
 		case let e: *secstore::entry =>
