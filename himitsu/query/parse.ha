@@ -1,5 +1,6 @@
 use ascii;
 use bytes;
+use crypto;
 use memio;
 use encoding::utf8;
 use io;
@@ -284,6 +285,67 @@ export fn matches(q: *query, candidate: *query, strict: bool = false) bool = {
 	defer finish(&s);
 	assert(matches(&s, &q));
 	assert(!matches(&s, &q, true));
+};
+
+// Returns wheter all items of 'a' equal 'b', including private values.
+export fn equals(a: *query, b: *query) bool = {
+	if (len(a.items) != len(b.items)) {
+		return false;
+	};
+
+	for :sub (let a &.. a.items) {
+		for (let b &..b.items) {
+			if (a.key != b.key) {
+				continue;
+			};
+
+			if (a.optional != b.optional || a.private != a.private) {
+				return false;
+			};
+
+			const equal = if (!a.private) {
+				yield a.value == b.value;
+			} else {
+				yield crypto::compare(strings::toutf8(a.value),
+					strings::toutf8(b.value));
+			};
+			if (!equal) {
+				return false;
+			};
+
+			continue :sub;
+
+		};
+		return false;
+	};
+	return true;
+};
+
+@test fn equals() void = {
+	let q = parse_str("a=b x=y c? d!")!;
+	defer finish(&q);
+	assert(equals(&q, &q));
+
+	let s = parse_str("a=b x=y c? d!")!;
+	defer finish(&s);
+	assert(equals(&q, &s));
+
+	let s = parse_str("a=b x=z c? d!")!;
+	defer finish(&s);
+	assert(!equals(&s, &q));
+
+	let s = parse_str("a=b c? d!")!;
+	defer finish(&s);
+	assert(!equals(&s, &q));
+
+	let p = parse_str("a=b x=y c? d!=test")!;
+	defer finish(&p);
+
+	assert(!equals(&s, &p));
+
+	let p2 = parse_str("a=b x=y c? d!=test2")!;
+	defer finish(&p2);
+	assert(!equals(&p, &p2));
 };
 
 // Frees resources associated with this query.
