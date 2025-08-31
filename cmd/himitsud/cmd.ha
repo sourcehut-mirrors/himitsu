@@ -334,24 +334,36 @@ fn exec_set(serv: *server, client: *client, args: []str) (void | cmderror) = {
 		free(updated);
 	};
 
-	prompter_send_update(&prompter, &changes)?;
+	let affected: []*secstore::entry = [];
+	defer free(affected);
 
 	const iter = secstore::query(serv.store, &qupdate, qupdate.strict);
 	for (let m => secstore::next(serv.store, &iter)) {
-		prompter_send_keys(&prompter, [m])?;
-
 		let q = secstore::entry_to_query(m, true)?;
 		defer query::finish(&q);
 
 		let up = query::change(&q, &changes)?;
+		let added = false;
+		defer if (!added) query::finish(&up);
 
-		if (append(updated, up) is nomem) {
-			query::finish(&up);
-			return nomem;
+		if (query::equals(&up, &q)) {
+			continue;
 		};
+
+		append(affected, m)?;
+		append(updated, up)?;
+		added = true;
 	};
 
+	if (len(affected) == 0) {
+		writefmt(client, "end")?;
+		return;
+	};
+
+	prompter_send_update(&prompter, &changes)?;
+	prompter_send_keys(&prompter, affected)?;
 	prompter_prompt(&prompter, prompt::mode::UPDATE)?;
+
 	if (!prompter_wait(&prompter)?) {
 		writefmt(client, "error User declined")?;
 		return;
