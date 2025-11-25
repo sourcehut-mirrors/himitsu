@@ -78,7 +78,7 @@ export fn next(p: *prompter) (command | io::EOF | error) = {
 		const (kind, arg) = strings::cut(args, " ");
 		switch (kind) {
 		case "session" =>
-			return remember::session;
+			return remember::session: remember;
 		case "timeout" =>
 			match (strconv::stou32(arg)) {
 			case let t: u32 =>
@@ -87,9 +87,9 @@ export fn next(p: *prompter) (command | io::EOF | error) = {
 				return errors::invalid;
 			};
 		case "skip" =>
-			return remember::skip;
+			return remember::skip: remember;
 		case "refuse" =>
-			return remember::refuse;
+			return remember::refuse: remember;
 		case =>
 			return errors::invalid;
 		};
