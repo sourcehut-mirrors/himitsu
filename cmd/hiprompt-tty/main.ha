@@ -6,7 +6,7 @@ use io;
 use memio;
 use os;
 use prompt;
-use rt;
+use sys;
 use strings;
 use types;
 use unix::signal;
@@ -31,8 +31,8 @@ export fn main() void = {
 	};
 
 	signal::block(signal::sig::TTOU);
-	let pgid = rt::getpgid(0)!;
-	rt::ioctl(tty, rt::TIOCSPGRP, &pgid)!;
+	let pgid = sys::getpgid(0)!;
+	sys::ioctl(tty, sys::TIOCSPGRP, &pgid)!;
 
 	let ctx = context {
 		tty = tty,

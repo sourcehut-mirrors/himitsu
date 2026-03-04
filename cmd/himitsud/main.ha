@@ -5,7 +5,7 @@ use io;
 use log;
 use os::exec;
 use os;
-use rt;
+use sys;
 use secstore;
 use strconv;
 use strings;
@@ -93,8 +93,8 @@ export fn main() void = {
 
 	defer shutdown(&sock);
 
-	const flags = rt::fcntl(sock.sock, rt::F_GETFL, 0)!;
-	rt::fcntl(sock.sock, rt::F_SETFL, flags | rt::O_CLOEXEC)!;
+	const flags = sys::fcntl(sock.sock, sys::F_GETFL, 0)!;
+	sys::fcntl(sock.sock, sys::F_SETFL, flags | sys::O_CLOEXEC)!;
 
 	match (ready_fd) {
 	case let f: io::file => {

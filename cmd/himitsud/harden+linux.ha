@@ -1,6 +1,6 @@
-use rt;
+use sys;
 
 fn harden() void = {
 	// Prevent core dumps from being made and debuggers from attaching
-	rt::prctl(rt::PR_SET_DUMPABLE, 0, 0, 0, 0)!;
+	sys::prctl(sys::PR_SET_DUMPABLE, 0, 0, 0, 0)!;
 };
