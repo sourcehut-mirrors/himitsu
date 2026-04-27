@@ -4,7 +4,7 @@
 // (c) 2021-2022 Drew DeVault <sir@cmpwn.com>
 use memio;
 use bytes;
-use crypto::blake2b;
+use crypto::blake2;
 use crypto::math;
 use endian;
 use hash;
@@ -287,7 +287,7 @@ fn inithash(
 	memsize: u32,
 ) void = {
 	let u32buf: [4]u8 = [0...];
-	let h = blake2b::blake2b([], 64);
+	let h = blake2::blake2b([], 64);
 	defer hash::close(&h);
 
 	hash_leputu32(&h, cfg.parallel);
@@ -322,7 +322,7 @@ fn varhash(dest: []u8, block: []u8) void = {
 	let u32buf: [4]u8 = [0...];
 
 	if (len(dest) <= 64) {
-		let h = blake2b::blake2b([], len(dest));
+		let h = blake2::blake2b([], len(dest));
 		defer hash::close(&h);
 		hash_leputu32(&h, len(dest): u32);
 		hash::write(&h, block);
@@ -337,7 +337,7 @@ fn varhash(dest: []u8, block: []u8) void = {
 
 	let destbuf = memio::fixed(dest);
 
-	let h = blake2b::blake2b([], 64);
+	let h = blake2::blake2b([], 64);
 	hash_leputu32(&h, len(dest): u32);
 	hash::write(&h, block);
 	hash::sum(&h, v[..]);
@@ -346,7 +346,7 @@ fn varhash(dest: []u8, block: []u8) void = {
 	io::writeall(&destbuf, v[..32])!;
 
 	for (let i = 1z; i < r; i += 1) {
-		let h = blake2b::blake2b([], 64);
+		let h = blake2::blake2b([], 64);
 		hash::write(&h, v[..]);
 		hash::sum(&h, v[..]);
 		hash::close(&h);
@@ -354,7 +354,7 @@ fn varhash(dest: []u8, block: []u8) void = {
 	};
 
 	const remainder = len(dest) - 32 * r;
-	let hend = blake2b::blake2b([], remainder);
+	let hend = blake2::blake2b([], remainder);
 	defer hash::close(&hend);
 	hash::write(&hend, v[..]);
 	hash::sum(&hend, v[..remainder]);
